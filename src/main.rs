@@ -42,8 +42,8 @@ fn panic(_info: &PanicInfo) -> !
 #[no_mangle]
 pub extern "C" fn EXTI4_Handler()
 {
-    exti::clear_pending_interrupt(mcu::GPIO04);
     send_mpu_data();
+    exti::clear_pending_interrupt(mcu::GPIO04);
 }
 
 #[no_mangle]
@@ -176,7 +176,7 @@ fn main() -> !
     exti::configure_afio(exti::cfg_by_port(mcu::GPIOB_BASE), mcu::GPIO04);
     exti::enable_interrupt(mcu::GPIO04);
     exti::clear_pending_interrupt(mcu::GPIO04);
-    irq::enable_irq(irq::IRQn::EXTI4 as u32);
+    // irq::enable_irq(irq::IRQn::EXTI4 as u32);
     
     loop
     {
@@ -187,7 +187,7 @@ fn main() -> !
         // Process GPS data
         gps_neo6m::process_gps();
         // Send ICM20948 data
-        // send_mpu_data();
+        send_mpu_data();
         // Delay
         utils::delay_ms(50);
     }
