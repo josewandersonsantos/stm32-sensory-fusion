@@ -39,13 +39,13 @@ cargo build --release --target thumbv7m-none-eabi
 cargo flash --chip STM32F103C8 --release
 ```
 
-## Dependências
+<!-- ## Dependências
 
 - [`embedded-hal`](https://docs.rs/embedded-hal)
 - [`cortex-m`](https://docs.rs/cortex-m)
 - [`cortex-m-rt`](https://docs.rs/cortex-m-rt)
 - [`stm32f1xx-hal`](https://docs.rs/stm32f1xx-hal)
-- [`nb`, `heapless`, etc.]
+- [`nb`, `heapless`, etc.] -->
 
 ## Licença
 
