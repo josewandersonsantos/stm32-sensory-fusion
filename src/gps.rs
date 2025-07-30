@@ -97,8 +97,8 @@ pub fn deframe_nmea(sentence: &str)
 
         if field_count > 5
         {
-            let lat = fields[2];
-            let lon = fields[4];
+            // let lat = fields[2];
+            // let lon = fields[4];
             /*
              *
              */

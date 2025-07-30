@@ -96,7 +96,7 @@ pub fn configure_pin(port_base: u32, pin: u32, mode: GpioMode, config: GpioConfi
         (port_base + 0x04) as *mut u32 // CRH
     };
 
-    let mut mode_bits = build_mode_bits(mode, config, speed);
+    let mode_bits = build_mode_bits(mode, config, speed);
     unsafe
     {
         utils::write_bits(config_reg, shift, mode_bits);

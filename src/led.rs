@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
 use crate::utils;
-use crate::gpio;
+//use crate::gpio;
 
-pub fn led_init(port:u32, pin: u32)
-{
-    // Enable the GPIO clock for the port // Bit 4 = GPIOC enable
-    gpio::enable_gpio_clock(0x04);
-    // Set the pin as output with 10MHz speed and push-pull mode
-    //gpio::set_mode_gpio(port, pin, gpio::MODE_OUTPUT_10MHZ_PP);
-}
+// pub fn led_init(port:u32, pin: u32)
+// {
+//     // Enable the GPIO clock for the port // Bit 4 = GPIOC enable
+//     gpio::enable_gpio_clock(0x04);
+//     // Set the pin as output with 10MHz speed and push-pull mode
+//     gpio::set_mode_gpio(port, pin, gpio::MODE_OUTPUT_10MHZ_PP);
+// }
 
 pub fn led_on(port: u32, pin: u32)
 {
