@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::utils;
 
 const NVIC_BASE: u32 = 0xE000_E100; // NVIC base address
