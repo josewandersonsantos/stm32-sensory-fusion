@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Lê um valor de 32 bits de um endereço de registrador
 pub unsafe fn read_register(addr: *const u32) -> u32
 {
@@ -10,16 +12,22 @@ pub unsafe fn write_register(addr: *mut u32, value: u32)
     core::ptr::write_volatile(addr, value)
 }
 
-/// Limpa bits especificados pela máscara
-pub fn clear_bits(value: u32, mask: u32) -> u32
+pub fn set_bit(register: *mut u32, bit: u8)
 {
-    value & !mask
+    unsafe
+    {
+        let value = read_register(register);
+        write_register(register, value | (1 << bit));
+    }
 }
 
-/// Define bits especificados pela máscara
-pub fn set_bits(value: u32, mask: u32) -> u32
+pub fn clear_bit(register: *mut u32, bit: u8)
 {
-    value | mask
+    unsafe
+    {
+        let value = read_register(register);
+        write_register(register, value & !(1 << bit));
+    }
 }
 
 /// Inverte os bits especificados pela máscara no registrador
