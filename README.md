@@ -1,4 +1,4 @@
-# Sensory Fusion 🚀
+# Sensory Fusion 🚀 (In Progress)
 
 Projeto embarcado em Rust para fusão sensorial com **Blue Pill (STM32F103)**, utilizando os sensores:
 
