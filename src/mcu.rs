@@ -51,6 +51,37 @@ pub const USART_SR_RXNE: u32 = 1 << 5; // Read data register not empty
 pub const USART_SR_TXE: u32  = 1 << 7; // Transmit data register empty
 
 /*
+ * Memory-mapped addresses for I2C
+ */
+pub const I2C1_BASE: u32 = 0x4000_5400; // I2C1 base address
+pub const I2C2_BASE: u32 = 0x4000_5800; // I2C2 base address
+pub const I2C3_BASE: u32 = 0x4000_5C00; // I2C3 base address
+
+pub const I2C_CR1: u32 = 0x00; // Control register 1
+pub const I2C_CR2: u32 = 0x04; // Control register 2
+pub const I2C_OAR1: u32 = 0x08; // Own address register 1
+pub const I2C_OAR2: u32 = 0x0C; // Own address register 2
+pub const I2C_DR: u32 = 0x10; // Data register
+pub const I2C_SR1: u32 = 0x14; // Status register 1
+pub const I2C_SR2: u32 = 0x18; // Status register 2
+pub const I2C_CCR: u32 = 0x1C; // Clock control register
+pub const I2C_TRISE: u32 = 0x20; // TRISE register
+pub const I2C_SR1_SB: u32 = 1 << 0; // Start bit
+pub const I2C_SR1_ADDR: u32 = 1 << 1; // Address sent (master mode) or matched (slave mode)
+pub const I2C_SR1_BTF: u32 = 1 << 2; // Byte transfer finished
+pub const I2C_SR1_RXNE: u32 = 1 << 6; // Data register not empty (receiving)
+pub const I2C_SR1_TXE: u32 = 1 << 7; // Data register empty (transmitting)
+pub const I2C_SR1_STOPF: u32 = 1 << 4; // Stop detection (slave mode)
+pub const I2C_SR1_AF: u32 = 1 << 10; // Acknowledge failure
+pub const I2C_SR1_ARLO: u32 = 1 << 9; // Arbitration lost (master mode)
+pub const I2C_SR1_BUSY: u32 = 1 << 1; // Bus busy
+pub const I2C_SR1_OVR: u32 = 1 << 11; // Overrun/underrun (slave mode)
+
+/*
+ * Memory-mapped addresses for SPI
+ */
+
+/*
  * Memory-mapped addresses for TIM
  */
 pub const TIM2_BASE: u32 = 0x4000_0000; // TIM2 base address
