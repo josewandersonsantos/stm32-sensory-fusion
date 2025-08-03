@@ -12,6 +12,8 @@ pub mod apb1
         Tim3,
         Usart2,
         Usart3,
+        I2C1,
+        I2C2,
         /*
          *
          */
@@ -25,6 +27,8 @@ pub mod apb1
             Apb1Peripheral::Tim3 => 1,
             Apb1Peripheral::Usart2 => 17,
             Apb1Peripheral::Usart3 => 18,
+            Apb1Peripheral::I2C1 => 21,
+            Apb1Peripheral::I2C2 => 22,
             /* 
              *
              */
@@ -57,7 +61,7 @@ pub mod apb2
         IoPb,
         IoPc,
         Usart1,
-        Adc1,
+        Adc1
         /*
          *
          */

@@ -162,13 +162,13 @@ static VECTOR_TABLE: [Option<unsafe extern "C" fn()>; 75] =
     Some(DMA2_Channel4_5_Handler),
 ];
 
-extern
+unsafe extern "C"
 {
-    static _sidata:u32; /* Start address of .data section in FLASH */
-    static mut _sdata:u32;  /* Start address of .data section in RAM */
-    static mut _edata:u32;  /* End address of .data section in RAM */
-    static mut _sbss:u32;   /* Start address of .bss section in RAM */
-    static mut _ebss:u32;   /* End address of .bss section in RAM */
+    unsafe static _sidata:u32; /* Start address of .data section in FLASH */
+    unsafe static mut _sdata:u32;  /* Start address of .data section in RAM */
+    unsafe static mut _edata:u32;  /* End address of .data section in RAM */
+    unsafe static mut _sbss:u32;   /* Start address of .bss section in RAM */
+    unsafe static mut _ebss:u32;   /* End address of .bss section in RAM */
 }
 
 /*
