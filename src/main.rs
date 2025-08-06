@@ -13,7 +13,9 @@ mod gpio;
 mod usart;
 mod irq;
 mod led;
-mod gps;
+mod i2c;
+mod gps_neo6m;
+mod mpu6050;
 
 #[no_mangle]
 fn main() -> !
@@ -36,7 +38,7 @@ fn main() -> !
         // Toggle LED on PC13
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data        
-        gps::process_gps();        
+        gps_neo6m::process_gps();        
         // Delay (simple busy-wait loop)
         for _ in 0..50_000 {}
     }    
@@ -65,7 +67,7 @@ pub extern "C" fn USART1_Handler()
             while (utils::read_register(usart1_sr) & mcu::USART_SR_TXE) == 0 {}
             utils::write_register(usart1_dr, data as u32);
 
-            gps::push_byte(data);
+            gps_neo6m::push_byte(data);
         }
     }
 }

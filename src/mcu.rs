@@ -55,7 +55,7 @@ pub const USART_SR_TXE: u32  = 1 << 7; // Transmit data register empty
  */
 pub const I2C1_BASE: u32 = 0x4000_5400; // I2C1 base address
 pub const I2C2_BASE: u32 = 0x4000_5800; // I2C2 base address
-pub const I2C3_BASE: u32 = 0x4000_5C00; // I2C3 base address
+//pub const I2C3_BASE: u32 = 0x4000_5C00; // I2C3 base address
 
 pub const I2C_CR1: u32 = 0x00; // Control register 1
 pub const I2C_CR2: u32 = 0x04; // Control register 2
