@@ -1,6 +1,6 @@
 # Sensory Fusion 🚀 (In Progress)
 
-Projeto embarcado em Rust para fusão sensorial com **Blue Pill (STM32F103)**, utilizando os sensores:
+(In progress...) Projeto embarcado em Rust para fusão sensorial com **Blue Pill (STM32F103)**, utilizando os sensores:
 
 - 🛰️ **GPS NEO-6M** para localização geográfica (via protocolo NMEA)
 - 🧭 **MPU6050** para leitura de aceleração e giroscópio
