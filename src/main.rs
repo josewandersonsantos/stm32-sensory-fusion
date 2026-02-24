@@ -24,8 +24,8 @@ fn main() -> !
     gpio::enable_gpio_clock(mcu::GPIOC_BASE);
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
 
-    // USART1 CFG
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPa);
+    
     // USART1 TX
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     // USART1 RX
@@ -33,12 +33,23 @@ fn main() -> !
     usart::start( usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
     irq::enable_irq(37); // USART1_IRQn = 37
 
+    // USART1 TX
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
+    // USART1 RX
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
+    usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
+   
+    // i2c::start(i2c::I2C::I2C1, i2c::I2CMode::Standard, i2c::I2CAddressingMode::SevenBit, i2c::I2CClockSpeed::Standard100kHz, i2c::I2CDataFormat::Data8Bit);
+    // i2c::master::read_register8(i2c::I2C::I2C1, 0x68, 0x75); // WHO_AM_I register of MPU6050
+
     loop
     {
         // Toggle LED on PC13
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data        
-        gps_neo6m::process_gps();        
+        gps_neo6m::process_gps();
+
+        // usart::write_string(usart::Usart::Usart2, "Hello from USART2!\r\n");
         // Delay (simple busy-wait loop)
         for _ in 0..50_000 {}
     }    
@@ -68,6 +79,7 @@ pub extern "C" fn USART1_Handler()
             utils::write_register(usart1_dr, data as u32);
 
             gps_neo6m::push_byte(data);
+            usart::write(usart::Usart::Usart2, data);
         }
     }
 }

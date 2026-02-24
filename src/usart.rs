@@ -185,3 +185,11 @@ pub fn write(usart: Usart, data: u8)
         utils::write_register(usart_dr, data as u32);
     }
 }
+
+pub fn write_string(usart: Usart, data: &str)
+{
+    for c in data.bytes()
+    {
+        write(usart, c);        
+    }
+}
