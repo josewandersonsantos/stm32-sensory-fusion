@@ -137,6 +137,8 @@ pub const GPIOG_BASE: u32 = 0x4001_2000; // GPIOG base address
  * Memory-mapped addresses for RCC
  */
 pub const RCC_ADDR: u32 = 0x4002_1000; // RCC base address
+pub const RCC_CR: u32 = RCC_ADDR + 0x00; // RCC_CR offset
+pub const RCC_CFGR: u32 = RCC_ADDR + 0x04; // RCC_CFGR offset
 
 pub const RCC_APB1ENR: u32 = RCC_ADDR + 0x1C; // RCC_APB1ENR offset
 pub const RCC_APB1ENR_TIM2: u32 = 0x0000_0001; // TIM2 clock enable
@@ -190,17 +192,76 @@ pub const RCC_APB2ENR_ETHMACRXEN: u32 = 0x0000_0020; // Ethernet MAC RX clock en
 pub const RCC_APB2ENR_ETHMACPTPEN: u32 = 0x0000_0040; // Ethernet MAC PTP clock enable
 
 /*
+ * Memory-mapped addresses for SYSTICK
+ */
+pub const SYSTICK_CTRL: u32 = 0xE000_E010; // SysTick control and status register
+pub const SYSTICK_LOAD: u32 = 0xE000_E014; // SysTick reload value register
+pub const SYSTICK_VAL: u32 = 0xE000_E018; // SysTick current value register
+
+/*
  * Memory-mapped addresses for NVIC
  */
-pub const IRQ_ADDR_WWDG:u32 = 0x0000_0040; // Window Watchdog interrupt
-pub const IRQ_ADDR_PVD:u32 = 0x0000_0044; // PVD through EXTI Line detection interrupt
-pub const IRQ_ADDR_TAMPER:u32 = 0x0000_0048; // Tamper interrupt
-pub const IRQ_ADDR_RTC:u32 = 0x0000_004C; // RTC global interrupt
-pub const IRQ_ADDR_FLASH:u32 = 0x0000_0050; // Flash global interrupt
-pub const IRQ_ADDR_RCC:u32 = 0x0000_0054; // RCC global interrupt
-pub const IRQ_ADDR_EXTI0:u32 = 0x0000_0058; // EXTI0 interrupt
-pub const IRQ_ADDR_EXTI1:u32 = 0x0000_005C; // EXTI1 interrupt
-pub const IRQ_ADDR_EXTI2:u32 = 0x0000_0060; // EXTI2 interrupt
+pub const IRQ_ADDR_WWDG:u32    = 0x0000_0040; // Window Watchdog interrupt
+pub const IRQ_ADDR_PVD:u32     = 0x0000_0044; // PVD through EXTI Line detection interrupt
+pub const IRQ_ADDR_TAMPER:u32  = 0x0000_0048; // Tamper interrupt
+pub const IRQ_ADDR_RTC:u32     = 0x0000_004C; // RTC global interrupt
+pub const IRQ_ADDR_FLASH:u32   = 0x0000_0050; // Flash global interrupt
+pub const IRQ_ADDR_RCC:u32     = 0x0000_0054; // RCC global interrupt
+pub const IRQ_ADDR_EXTI0:u32   = 0x0000_0058; // EXTI0 interrupt
+pub const IRQ_ADDR_EXTI1:u32   = 0x0000_005C; // EXTI1 interrupt
+pub const IRQ_ADDR_EXTI2:u32   = 0x0000_0060; // EXTI2 interrupt
+pub const IRQ_ADDR_EXTI3:u32   = 0x0000_0064; // EXTI3 interrupt
+pub const IRQ_ADDR_EXTI4:u32   = 0x0000_0068; // EXTI4 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL1:u32 = 0x0000_006C; // DMA1 Channel 1 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL2:u32 = 0x0000_0070; // DMA1 Channel 2 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL3:u32 = 0x0000_0074; // DMA1 Channel 3 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL4:u32 = 0x0000_0078; // DMA1 Channel 4 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL5:u32 = 0x0000_007C; // DMA1 Channel 5 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL6:u32 = 0x0000_0080; // DMA1 Channel 6 interrupt
+pub const IRQ_ADDR_DMA1_CHANNEL7:u32 = 0x0000_0084; // DMA1 Channel 7 interrupt
+pub const IRQ_ADDR_ADC1_2:u32  = 0x0000_0088; // ADC1 and ADC2 global interrupt
+pub const IRQ_ADDR_CAN1_TX:u32 = 0x0000_008C; // USB High Priority or CAN1 TX interrupts
+pub const IRQ_ADDR_CAN1_RX0:u32 = 0x0000_0090; // USB Low Priority or CAN1 RX0 interrupts
+pub const IRQ_ADDR_CAN1_RX1:u32  = 0x0000_0094; // CAN1 RX1 interrupt
+pub const IRQ_ADDR_CAN1_SCE:u32 = 0x0000_0098; // CAN1 SCE interrupt
+pub const IRQ_ADDR_EXTI9_5:u32  = 0x0000_009C; // EXTI Line[9:5] interrupts
+pub const IRQ_ADDR_TIM1_BRK:u32 = 0x0000_00A0; // TIM1 Break interrupt
+pub const IRQ_ADDR_TIM1_UP:u32  = 0x0000_00A4; // TIM1 Update interrupt
+pub const IRQ_ADDR_TIM1_TRG_COM:u32 = 0x0000_00A8; // TIM1 Trigger and Commutation interrupt
+pub const IRQ_ADDR_TIM1_CC:u32  = 0x0000_00AC; // TIM1 Capture Compare interrupt
+pub const IRQ_ADDR_TIM2:u32     = 0x0000_00B0; // TIM2 global interrupt
+pub const IRQ_ADDR_TIM3:u32     = 0x0000_00B4; // TIM3 global interrupt
+pub const IRQ_ADDR_TIM4:u32     = 0x0000_00B8; // TIM4 global interrupt
+pub const IRQ_ADDR_I2C1_EV:u32 = 0x0000_00BC; // I2C1 Event interrupt
+pub const IRQ_ADDR_I2C1_ER:u32 = 0x0000_00C0; // I2C1 Error interrupt
+pub const IRQ_ADDR_I2C2_EV:u32 = 0x0000_00C4; // I2C2 Event interrupt
+pub const IRQ_ADDR_I2C2_ER:u32 = 0x0000_00C8; // I2C2 Error interrupt
+pub const IRQ_ADDR_SPI1:u32    = 0x0000_00CC; // SPI1 global interrupt
+pub const IRQ_ADDR_SPI2:u32    = 0x0000_00D0; // SPI2 global interrupt
+pub const IRQ_ADDR_USART1:u32  = 0x0000_00D4; // USART1 global interrupt
+pub const IRQ_ADDR_USART2:u32  = 0x0000_00D8; // USART2 global interrupt
+pub const IRQ_ADDR_USART3:u32  = 0x0000_00DC; // USART3 global interrupt
+pub const IRQ_ADDR_EXTI15_10:u32 = 0x0000_00E0; // EXTI Line[15:10] interrupts
+pub const IRQ_ADDR_RTC_ALARM:u32 = 0x0000_00E4; // RTC Alarm through EXTI Line interrupt
+pub const IRQ_ADDR_USB_WAKEUP:u32 = 0x0000_00E8; // USB Wakeup from suspend through EXTI Line interrupt
+pub const IRQ_ADDR_TIM5:u32     = 0x0000_0108; // TIM5 global interrupt
+pub const IRQ_ADDR_SPI3:u32    = 0x0000_010C; // SPI3 global interrupt
+pub const IRQ_ADDR_USART4:u32  = 0x0000_0110; // USART4 global interrupt
+pub const IRQ_ADDR_USART5:u32  = 0x0000_0114; // USART5 global interrupt
+pub const IRQ_ADDR_TIM6:u32     = 0x0000_0118; // TIM6 global interrupt
+pub const IRQ_ADDR_TIM7:u32     = 0x0000_011C; // TIM7 global interrupt
+pub const IRQ_ADDR_DMA2_CHANNEL1:u32 = 0x0000_0120; // DMA2 Channel 1 interrupt
+pub const IRQ_ADDR_DMA2_CHANNEL2:u32 = 0x0000_0124; // DMA2 Channel 2 interrupt
+pub const IRQ_ADDR_DMA2_CHANNEL3:u32 = 0x0000_0128; // DMA2 Channel 3 interrupt
+pub const IRQ_ADDR_DMA2_CHANNEL4:u32 = 0x0000_012C; // DMA2 Channel 4 interrupt
+pub const IRQ_ADDR_DMA2_CHANNEL5:u32 = 0x0000_0130; // DMA2 Channel 5 interrupt
+pub const IRQ_ADDR_ETHERNET:u32 = 0x0000_0134; // Ethernet interrupt
+pub const IRQ_ADDR_ETHERNET_WAKEUP:u32 = 0x0000_0138; // Ethernet Wakeup interrupt
+pub const IRQ_ADDR_CAN2_TX:u32 = 0x0000_013C; // USB High Priority or CAN2 TX interrupts
+pub const IRQ_ADDR_CAN2_RX0:u32 = 0x0000_0140; // USB Low Priority or CAN2 RX0 interrupts
+pub const IRQ_ADDR_CAN2_RX1:u32  = 0x0000_0144; // CAN2 RX1 interrupt
+pub const IRQ_ADDR_CAN2_SCE:u32 = 0x0000_0148; // CAN2 SCE interrupt
+pub const IRQ_ADDR_USB:u32 = 0x0000_014C; // USB On The Go FS global interrupt
 
 /*
  * Memory-mapped addresses for EXTI

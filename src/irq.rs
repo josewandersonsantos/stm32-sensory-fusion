@@ -5,7 +5,7 @@ use crate::utils;
 const NVIC_BASE: u32 = 0xE000_E100; // NVIC base address
 const NVIC_ISER: u32 = NVIC_BASE + 0x00; // Interrupt Set-Enable Register
 const NVIC_ICER: u32 = NVIC_BASE + 0x80; // Interrupt Clear-Enable Register
-const NVIC_IPR: u32 = NVIC_BASE + 0x400; // Interrupt Priority Register
+const NVIC_IPR: u32  = NVIC_BASE + 0x400; // Interrupt Priority Register
 
 pub fn enable_irq(pin: u32)
 {
