@@ -32,7 +32,7 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    irq::enable_irq(mcu::IRQn::USART1 as u32);
+    // irq::enable_irq(mcu::IRQn::USART1 as u32);
 
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
@@ -43,7 +43,11 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO07, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     i2c::start(i2c::I2C::I2C1, i2c::I2CMode::Standard, i2c::I2CAddressingMode::SevenBit, i2c::I2CClockSpeed::Standard100kHz, i2c::I2CDataFormat::Data8Bit);
-    let bt = i2c::master::read_register8(i2c::I2C::I2C1, 0x68, 0x75); // WHO_AM_I register of MPU6050
+    //let bt = i2c::master::read_register8(i2c::I2C::I2C1, 0x68, 0x75); // WHO_AM_I register of MPU6050
+    if mpu6050::check(&i2c::I2C::I2C1)
+    {
+        mpu6050::init(&i2c::I2C::I2C1, mpu6050::AccelRange::G2, mpu6050::GyroRange::D500, mpu6050::Dlpf::Hz94);
+    }
 
     loop
     {
@@ -51,7 +55,11 @@ fn main() -> !
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data
         gps_neo6m::process_gps();
-
+        // Read MPU6050 data
+        let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
+        let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
+        let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
+        
         utils::delay_ms(500);
     }
 }
