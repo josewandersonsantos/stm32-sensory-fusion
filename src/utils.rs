@@ -1,5 +1,27 @@
 #![allow(dead_code)]
 
+use crate::{mcu, rcc, utils};
+
+pub fn delay_ms(ms: u32)
+{
+    let ticks = (rcc::get_pclk1_frequency() / 1000) * ms;
+
+    unsafe
+    {
+        let systick_ctrl = mcu::SYSTICK_CTRL as *mut u32;
+        let systick_load = mcu::SYSTICK_LOAD as *mut u32;
+        let systick_val  = mcu::SYSTICK_VAL  as *mut u32;
+
+        utils::write_register(systick_load, ticks - 1);
+        utils::write_register(systick_val, 0);
+        utils::write_register(systick_ctrl, 0b101); // enable + core clock
+
+        while (utils::read_bit(systick_ctrl, 16)) == 0 {}
+
+        utils::write_register(systick_ctrl, 0); // stop
+    }
+}
+
 /// Lê um valor de 32 bits de um endereço de registrador
 pub unsafe fn read_register(addr: *const u32) -> u32
 {
@@ -10,6 +32,15 @@ pub unsafe fn read_register(addr: *const u32) -> u32
 pub unsafe fn write_register(addr: *mut u32, value: u32)
 {
     core::ptr::write_volatile(addr, value)
+}
+
+pub fn read_bit(register: *mut u32, bit: u8) -> u8
+{
+    unsafe
+    {
+        let value = read_register(register);
+        ((value >> bit) & 1) as u8
+    }
 }
 
 pub fn set_bit(register: *mut u32, bit: u8)
