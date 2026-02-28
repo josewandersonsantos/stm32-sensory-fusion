@@ -79,7 +79,7 @@ pub enum I2C_SR2
     PEC01   = 8,  // Packet Error Checking Register
 }
 
-fn get_base(i2c: I2C) -> u32
+fn get_base(i2c: &I2C) -> u32
 {
     match i2c
     {
@@ -191,7 +191,7 @@ pub mod master
 {
     use super::*;
 
-    pub fn write_register8(i2c: I2C, device_addr: u8, reg_addr: u8, value: u8)
+    pub fn write_register8(i2c: &I2C, device_addr: u8, reg_addr: u8, value: u8)
     {
         let i2c_base = get_base(i2c);
 
@@ -228,7 +228,7 @@ pub mod master
         }
     }
     
-    pub fn read_register8(i2c: I2C, device_addr: u8, reg_addr: u8) -> u8
+    pub fn read_register8(i2c: &I2C, device_addr: u8, reg_addr: u8) -> u8
     {
         let i2c_base = get_base(i2c);
 
