@@ -5,8 +5,6 @@
 
 use core::panic::PanicInfo;
 
-use crate::bridge::get_package_acc_date;
-
 mod startup_stm32f103;
 mod utils;
 mod checksum;
@@ -51,10 +49,34 @@ pub extern "C" fn USART1_Handler()
             while (utils::read_register(usart1_sr) & mcu::USART_SR_TXE) == 0 {}
             utils::write_register(usart1_dr, data as u32);
 
-            // gps_neo6m::push_byte(data);
-            usart::write(usart::Usart::Usart2, data);
+            gps_neo6m::push_byte(data);
+            //usart::write(usart::Usart::Usart2, data);
         }
     }
+}
+
+/*
+ * BRIDGE TX
+ */
+fn send_frame(frame: &bridge::FrameTx)
+{
+    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.header));
+    usart::write_bytes(usart::Usart::Usart2, frame.payload);
+    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.crc));
+}
+
+fn send_acc_data(x: f32, y: f32, z: f32)
+{
+    let mut payload = [0u8; 12];
+    let frame = bridge::get_package_acc_data(&mut payload, x, y, z);
+    send_frame(&frame);
+}
+
+fn send_gyr_data(x: f32, y: f32, z: f32)
+{
+    let mut payload = [0u8; 12];
+    let frame = bridge::get_package_gyr_data(&mut payload, x, y, z);
+    send_frame(&frame);
 }
 
 /*
@@ -63,22 +85,7 @@ pub extern "C" fn USART1_Handler()
 fn cb_line_from_gps(line: &str)
 {
     let frame: bridge::FrameTx = bridge::get_gps_data(line.as_bytes());
-    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
-}
-
-/*
- * BRIDGE TX
- */
-fn send_acc_data(x: f32, y: f32, z: f32)
-{
-    let frame = bridge::get_package_acc_date(x, y, z);
-    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
-}
-
-fn send_gyr_data(x: f32, y: f32, z: f32)
-{
-    let frame = bridge::get_package_gyr_date(x, y, z);
-    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
+    send_frame(&frame);
 }
 
 /*
@@ -123,7 +130,6 @@ fn main() -> !
         let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
         let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
         // let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
-
         send_acc_data(x, y, z);
         send_gyr_data(gx, gy, gz);
         
