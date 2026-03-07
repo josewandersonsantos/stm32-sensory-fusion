@@ -2,7 +2,7 @@ use core::u16;
 
 use crate::{checksum, utils};
 
-const PAYLOAD_SIZE_MAX: usize = 256;
+const PAYLOAD_SIZE_MAX: usize = 128;
 const SOF: u8 = 0x7E;
 const HEADER_SIZE:usize = core::mem::size_of::<FrameHeader>();
 static mut FRAME_ID: u8 = 1;
@@ -26,10 +26,10 @@ pub struct FrameHeader
     pub frame_id: u8
 }
 
-pub struct FrameTx
+pub struct FrameTx<'a>
 {
     pub header: FrameHeader,
-    pub payload: [u8; PAYLOAD_SIZE_MAX],
+    pub payload: &'a [u8],
     pub crc: u16
 }
 
@@ -48,78 +48,63 @@ pub fn get_header(tp: FrameType, len: u16) -> FrameHeader
     }
 }
 
-pub fn build_frame(tp: FrameType, data: &[u8]) -> FrameTx
+pub fn build_frame<'a>(tp: FrameType, data: &'a [u8]) -> FrameTx<'a>
 {
-    let len = 
-    if data.len() > PAYLOAD_SIZE_MAX
-    {
-        data.len()
-    }
-    else
-    {
-        PAYLOAD_SIZE_MAX
-    };
-    
+    let len = core::cmp::min(data.len(), PAYLOAD_SIZE_MAX);
+    let payload = &data[..len];
     let header = get_header(tp, len as u16);
     let mut frame = FrameTx
     {
         header,
-        payload: [0u8; PAYLOAD_SIZE_MAX],
+        payload,
         crc: 0
     };
 
-    // copy payload
-    frame.payload[..len].copy_from_slice(data);
-    // get CRC16
-    let bytes = utils::as_bytes(&frame);
-    frame.crc = checksum::get_crc16(bytes, (data.len() + HEADER_SIZE) as u16);
+    // CRC header + payload
+    let header_bytes = utils::as_bytes(&frame.header);
+    frame.crc = checksum::get_crc16(header_bytes, HEADER_SIZE as u16);
+    frame.crc ^= checksum::get_crc16(payload, len as u16);
 
     frame
 }
 
-pub fn get_gps_data(data: &[u8]) -> FrameTx
+pub fn get_gps_data<'a>(data: &'a [u8]) -> FrameTx<'a>
 {
     build_frame(FrameType::FR_TYPE_GPS_DATA, data)
 }
 
-pub fn get_package_cfg(data: &[u8]) -> FrameTx
+pub fn get_package_cfg<'a>(data: &'a [u8]) -> FrameTx<'a>
 {
     build_frame(FrameType::FR_TYPE_CFG, data)
 }
 
-pub fn get_package_acc_date(x: f32, y: f32, z: f32) -> FrameTx
+pub fn get_package_acc_data<'a>(buf: &'a mut [u8; 12], x: f32, y: f32, z: f32) -> FrameTx<'a>
 {
-    let mut data:[u8; 12] = [0u8; 12];
-    
-    data[0..4].copy_from_slice(&x.to_le_bytes());
-    data[4..8].copy_from_slice(&y.to_le_bytes());
-    data[8..12].copy_from_slice(&z.to_le_bytes());
+    buf[0..4].copy_from_slice(&x.to_le_bytes());
+    buf[4..8].copy_from_slice(&y.to_le_bytes());
+    buf[8..12].copy_from_slice(&z.to_le_bytes());
 
-    build_frame(FrameType::FR_TYPE_ACC_DATA, &data)
+    build_frame(FrameType::FR_TYPE_ACC_DATA, buf)
 }
 
-pub fn get_package_gyr_date(x: f32, y: f32, z: f32) -> FrameTx
+pub fn get_package_gyr_data<'a>(buf: &'a mut [u8; 12], x: f32, y: f32, z: f32) -> FrameTx<'a>
 {
-    let mut data:[u8; 12] = [0u8; 12];
-    
-    data[0..4].copy_from_slice(&x.to_le_bytes());
-    data[4..8].copy_from_slice(&y.to_le_bytes());
-    data[8..12].copy_from_slice(&z.to_le_bytes());
+    buf[0..4].copy_from_slice(&x.to_le_bytes());
+    buf[4..8].copy_from_slice(&y.to_le_bytes());
+    buf[8..12].copy_from_slice(&z.to_le_bytes());
 
-    build_frame(FrameType::FR_TYPE_GYR_DATA, &data)
+    build_frame(FrameType::FR_TYPE_GYR_DATA, buf)
 }
 
-pub fn get_package_coords(lat: f32, lon: f32) -> FrameTx
+pub fn get_package_coords<'a>(buf: &'a mut [u8; 8], lat: f32, lon: f32) -> FrameTx<'a>
 {
-    let mut data:[u8; 8] = [0u8; 8];
-    
-    data[0..4].copy_from_slice(&lat.to_le_bytes());
-    data[4..8].copy_from_slice(&lon.to_le_bytes());
+    buf[0..4].copy_from_slice(&lat.to_le_bytes());
+    buf[4..8].copy_from_slice(&lon.to_le_bytes());
 
-    build_frame(FrameType::FR_TYPE_COORDS, &data)
+    build_frame(FrameType::FR_TYPE_COORDS, buf)
 }
 
-pub fn verify_package(mut frame: FrameTx) -> u8
+pub fn verify_package(frame: FrameTx) -> u8
 {
     let crc_rx = frame.crc;
     let bytes = utils::as_bytes(&frame);
