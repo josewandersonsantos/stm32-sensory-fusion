@@ -5,8 +5,11 @@
 
 use core::panic::PanicInfo;
 
+use crate::bridge::get_package_acc_date;
+
 mod startup_stm32f103;
 mod utils;
+mod checksum;
 mod mcu;
 mod rcc;
 mod gpio;
@@ -14,17 +17,24 @@ mod usart;
 mod irq;
 mod led;
 mod i2c;
+mod bridge;
 mod gps_neo6m;
 mod mpu6050;
 mod fusion;
 mod kalman_filter;
 
+/*
+ * PANIC HANDLER
+ */
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> !
 {
     loop {}
 }
 
+/*
+ * CALLBACKS IT
+ */
 #[no_mangle]
 pub extern "C" fn USART1_Handler()
 {
@@ -47,6 +57,33 @@ pub extern "C" fn USART1_Handler()
     }
 }
 
+/*
+ * CALLBACKS DATA
+ */
+fn cb_line_from_gps(line: &str)
+{
+    let frame: bridge::FrameTx = bridge::get_gps_data(line.as_bytes());
+    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
+}
+
+/*
+ * BRIDGE TX
+ */
+fn send_acc_data(x: f32, y: f32, z: f32)
+{
+    let frame = bridge::get_package_acc_date(x, y, z);
+    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
+}
+
+fn send_gyr_data(x: f32, y: f32, z: f32)
+{
+    let frame = bridge::get_package_gyr_date(x, y, z);
+    usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame));
+}
+
+/*
+ * MAIN
+ */
 #[no_mangle]
 fn main() -> !
 {
@@ -68,7 +105,7 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R10Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC]);
+    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R10Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps);
 
     // I2C1 (MPU6050)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
@@ -85,7 +122,10 @@ fn main() -> !
         // Read MPU6050 data
         let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
         let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
-        let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
+        // let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
+
+        send_acc_data(x, y, z);
+        send_gyr_data(gx, gy, gz);
         
         utils::delay_ms(2000);        
     }
