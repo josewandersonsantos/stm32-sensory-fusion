@@ -52,5 +52,3 @@ cargo flash --chip STM32F103C8 --release
 MIT © José — Projeto educacional para explorar fusão sensorial em sistemas embarcados.
 
 ---
-
-> Em desenvolvimento contínuo, contribuições e feedbacks são bem-vindos 😄
