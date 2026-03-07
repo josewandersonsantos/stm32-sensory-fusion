@@ -193,3 +193,11 @@ pub fn write_string(usart: Usart, data: &str)
         write(usart, c);        
     }
 }
+
+pub fn write_bytes(usart: Usart, data: &[u8])
+{
+    for &byte in data
+    {
+        write(usart, byte);
+    }
+}
