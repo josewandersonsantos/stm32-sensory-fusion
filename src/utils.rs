@@ -77,3 +77,11 @@ pub unsafe fn write_bits(addr: *mut u32, shift: u32, value: u32)
     let updated = (current & mask) | ((value & 0xF) << shift);
     write_register(addr, updated);
 }
+
+pub fn as_bytes<T>(data: &T) -> &[u8]
+{
+    unsafe
+    {
+        core::slice::from_raw_parts((data as *const T) as *const u8, core::mem::size_of::<T>(),)
+    }
+}
