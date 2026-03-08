@@ -50,7 +50,7 @@ pub extern "C" fn USART1_Handler()
             utils::write_register(usart1_dr, data as u32);
 
             gps_neo6m::push_byte(data);
-            //usart::write(usart::Usart::Usart2, data);
+            usart::write(usart::Usart::Usart2, data);
         }
     }
 }
@@ -85,7 +85,7 @@ fn send_gyr_data(x: f32, y: f32, z: f32)
 fn cb_line_from_gps(line: &str)
 {
     let frame: bridge::FrameTx = bridge::get_gps_data(line.as_bytes());
-    send_frame(&frame);
+    // send_frame(&frame);
 }
 
 /*
@@ -125,14 +125,14 @@ fn main() -> !
         // Toggle LED on PC13
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data
-        gps_neo6m::process_gps();
+        // gps_neo6m::process_gps();
         // Read MPU6050 data
         let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
         let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
         // let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
-        send_acc_data(x, y, z);
-        send_gyr_data(gx, gy, gz);
+        // send_acc_data(x, y, z);
+        // send_gyr_data(gx, gy, gz);
         
-        utils::delay_ms(2000);        
+        utils::delay_ms(500);        
     }
 }
