@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, ptr, sync::atomic::AtomicBool, sync::atomic::Ordering};
 
 mod startup_stm32f103;
 mod utils;
@@ -50,7 +50,7 @@ pub extern "C" fn USART1_Handler()
             utils::write_register(usart1_dr, data as u32);
 
             gps_neo6m::push_byte(data);
-            usart::write(usart::Usart::Usart2, data);
+            //usart::write(usart::Usart::Usart2, data);
         }
     }
 }
@@ -58,11 +58,26 @@ pub extern "C" fn USART1_Handler()
 /*
  * BRIDGE TX
  */
+static MTX_SEND_FRAME: AtomicBool = AtomicBool::new(false);
 fn send_frame(frame: &bridge::FrameTx)
 {
+    if MTX_SEND_FRAME.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed).is_err()
+    {
+        return;
+    }
+    
     usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.header));
     usart::write_bytes(usart::Usart::Usart2, frame.payload);
     usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.crc));
+    
+    MTX_SEND_FRAME.store(false, Ordering::Release);
+}
+
+fn send_mpu_data(acc_x: f32, acc_y: f32, acc_z: f32, gyr_x: f32, gyr_y: f32, gyr_z: f32, temp: f32)
+{
+    let mut payload = [0u8; 28];
+    let frame = bridge::get_package_mpu_data(&mut payload, acc_x, acc_y, acc_z, gyr_x, gyr_y, gyr_z, temp);
+    send_frame(&frame);
 }
 
 fn send_acc_data(x: f32, y: f32, z: f32)
@@ -85,7 +100,7 @@ fn send_gyr_data(x: f32, y: f32, z: f32)
 fn cb_line_from_gps(line: &str)
 {
     let frame: bridge::FrameTx = bridge::get_gps_data(line.as_bytes());
-    // send_frame(&frame);
+    send_frame(&frame);
 }
 
 /*
@@ -102,17 +117,17 @@ fn main() -> !
     // PC13 (LED)
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
     
-    // USART1 (GPS)
-    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
-    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
-    usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    irq::enable_irq(mcu::IRQn::USART1 as u32);
-
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
     gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R10Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps);
+
+    // USART1 (GPS)
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
+    usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
+    // irq::enable_irq(mcu::IRQn::USART1 as u32);
 
     // I2C1 (MPU6050)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
@@ -129,10 +144,10 @@ fn main() -> !
         // Read MPU6050 data
         let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
         let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
-        // let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
-        send_acc_data(x, y, z);
-        send_gyr_data(gx, gy, gz);
-        
+        let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
+        // send_acc_data(x, y, z);
+        // send_gyr_data(gx, gy, gz);
+        send_mpu_data(x, y, z, gx, gy, gz, temp_c);
         utils::delay_ms(500);        
     }
 }
