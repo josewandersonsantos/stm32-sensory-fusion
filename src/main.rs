@@ -73,10 +73,15 @@ fn send_frame(frame: &bridge::FrameTx)
     MTX_SEND_FRAME.store(false, Ordering::Release);
 }
 
-fn send_mpu_data(acc_x: f32, acc_y: f32, acc_z: f32, gyr_x: f32, gyr_y: f32, gyr_z: f32, temp: f32)
+fn send_mpu_data()
 {
+    // Read MPU6050 data
+    let (acc_x, acc_y, acc_z) = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
+    let (gyr_x, gyr_y, gyr_z) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
+    let temp_c                          = mpu6050::temperature_c(&i2c::I2C::I2C1);
+
     let mut payload = [0u8; 28];
-    let frame = bridge::get_package_mpu_data(&mut payload, acc_x, acc_y, acc_z, gyr_x, gyr_y, gyr_z, temp);
+    let frame = bridge::get_package_mpu_data(&mut payload, acc_x, acc_y, acc_z, gyr_x, gyr_y, gyr_z, temp_c);
     send_frame(&frame);
 }
 
@@ -127,7 +132,7 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    // irq::enable_irq(mcu::IRQn::USART1 as u32);
+    irq::enable_irq(mcu::IRQn::USART1 as u32);
 
     // I2C1 (MPU6050)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
@@ -140,14 +145,9 @@ fn main() -> !
         // Toggle LED on PC13
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data
-        // gps_neo6m::process_gps();
-        // Read MPU6050 data
-        let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
-        let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
-        let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
-        // send_acc_data(x, y, z);
-        // send_gyr_data(gx, gy, gz);
-        send_mpu_data(x, y, z, gx, gy, gz, temp_c);
+        gps_neo6m::process_gps();
+        // Send MPU6050 data
+        send_mpu_data();
         utils::delay_ms(500);        
     }
 }
