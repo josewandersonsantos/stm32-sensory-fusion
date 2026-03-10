@@ -130,8 +130,8 @@ fn main() -> !
         let (x, y, z)    = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
         let (gx, gy, gz) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
         // let temp_c                 = mpu6050::temperature_c(&i2c::I2C::I2C1);
-        // send_acc_data(x, y, z);
-        // send_gyr_data(gx, gy, gz);
+        send_acc_data(x, y, z);
+        send_gyr_data(gx, gy, gz);
         
         utils::delay_ms(500);        
     }
