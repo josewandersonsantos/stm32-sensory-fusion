@@ -16,6 +16,7 @@ pub enum FrameType
     FR_TYPE_COORDS = 3,
     FR_TYPE_ACC_DATA = 4,
     FR_TYPE_GYR_DATA = 5,
+    FR_TYPE_MPU_DATA = 6,
 }
 
 #[derive(Clone, Copy)]
@@ -76,6 +77,19 @@ pub fn get_gps_data<'a>(data: &'a [u8]) -> FrameTx<'a>
 pub fn get_package_cfg<'a>(data: &'a [u8]) -> FrameTx<'a>
 {
     build_frame(FrameType::FR_TYPE_CFG, data)
+}
+
+pub fn get_package_mpu_data<'a>(buf: &'a mut [u8; 28], acc_x: f32, acc_y: f32, acc_z: f32, gyr_x: f32, gyr_y: f32, gyr_z: f32, temp: f32) -> FrameTx<'a>
+{
+    buf[0..4].copy_from_slice(&acc_x.to_le_bytes());
+    buf[4..8].copy_from_slice(&acc_y.to_le_bytes());
+    buf[8..12].copy_from_slice(&acc_z.to_le_bytes());
+    buf[12..16].copy_from_slice(&gyr_x.to_le_bytes());
+    buf[16..20].copy_from_slice(&gyr_y.to_le_bytes());
+    buf[20..24].copy_from_slice(&gyr_z.to_le_bytes());
+    buf[24..28].copy_from_slice(&temp.to_le_bytes());
+
+    build_frame(FrameType::FR_TYPE_MPU_DATA, buf)
 }
 
 pub fn get_package_acc_data<'a>(buf: &'a mut [u8; 12], x: f32, y: f32, z: f32) -> FrameTx<'a>
