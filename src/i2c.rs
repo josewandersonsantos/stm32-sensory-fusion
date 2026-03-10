@@ -8,6 +8,7 @@ use crate::mcu;
 
 const I2C_READ_BIT: u8 = 1;
 const I2C_WRITE_BIT: u8 = 0;
+const I2C_TIMEOUT_MS: u8 = 10;
 
 pub enum I2C
 {
@@ -93,11 +94,22 @@ fn reg(base: u32, offset: u32) -> *mut u32
     (base + offset) as *mut u32
 }
 
-fn start_condition(i2c_base: u32)
+fn wait_read_bit(i2c_base: u32, offset: u32, bit: u8, exp: u8) -> u8
 {
-    // while utils::read_bit(reg(i2c_base, mcu::I2C_SR2), I2C_SR2::BUSY as u8) == 1 {}
+    let mut timeout = I2C_TIMEOUT_MS;
+    while utils::read_bit(reg(i2c_base, offset), bit as u8) == exp && timeout > 0
+    {   
+        timeout -= 1;
+        utils::delay_ms(1);
+    }
+
+    return if timeout == 0 { 0 } else { 1 };
+}
+
+fn start_condition(i2c_base: u32) -> u8
+{
     utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::START as u8); // START
-    while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::SB as u8) == 0 {}
+    wait_read_bit(i2c_base, mcu::I2C_SR1, I2C_SR1::SB as u8, 0)
 }
 
 fn stop_condition(i2c_base: u32)
@@ -197,7 +209,10 @@ pub mod master
 
         unsafe
         {
-            start_condition(i2c_base);
+            if start_condition(i2c_base) == 0
+            {
+                return;
+            }
 
             // Write device address with write bit (0)
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
@@ -235,7 +250,7 @@ pub mod master
         unsafe
         {
             // ---- Write register address ----
-            start_condition(i2c_base);
+            if start_condition(i2c_base) == 0 { return 0;}
 
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
 
@@ -251,7 +266,7 @@ pub mod master
             while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::BTF as u8) == 0 {}
 
             // ---- Repeated START ----
-            start_condition(i2c_base);
+            if start_condition(i2c_base) == 0 { return 0;}
 
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_READ_BIT) as u32);
 
