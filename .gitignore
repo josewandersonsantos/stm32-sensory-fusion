@@ -1,1 +1,14 @@
 /target
+docs/Comments-Kalman.md
+docs/Intuitive Understanding of Kalman Filtering with MATLAB ( etc.) (z-library.sk, 1lib.sk, z-lib.sk).pdf
+docs/KalmanFilter-Study.md
+docs/Linear Algebra and Optimization with Applications to Machine Learning. Volume I Linear Algebra for Computer Vision, Robotics,… (Jean H. Gallier, Jocelyn Quaintance) (z-library.sk, 1lib.sk, z-lib.sk).pdf
+docs/pdfcoffee.com_fundamentals-of-inertial-navigation-satellite-based-positioning-and-their-integration-2-pdf-free.pdf
+docs/Principles of GNSS, Inertial, and Multi-Sensor Integrated Navigation Systems (GNSS Technology and Applications) (Paul D. Groves) (z-library.sk, 1lib.sk, z-lib.sk).pdf
+docs/TCCIdea.md
+docs/Z-Library-latest.exe
+docs/mod/Intuitive Understanding of Kalman Filtering with MATLAB ( etc.) (z-library.sk, 1lib.sk, z-lib.sk).pdf
+test/kalman_test_01.cpp
+test/kalman_test_01.exe
+test/kalman_test.exe
+test/kalman_test.cpp
