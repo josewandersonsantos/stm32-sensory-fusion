@@ -203,4 +203,3 @@ pub fn sleep(i2c: &i2c::I2C, enable: bool)
     }
     i2c::master::write_register8(i2c, MPU6050_ADDRESS, MPU6050_PWR_MGMT_1, v);
 }
-// pub fn 
