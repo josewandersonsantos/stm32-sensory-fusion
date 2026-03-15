@@ -18,6 +18,7 @@ mod i2c;
 mod bridge;
 mod gps_neo6m;
 mod mpu6050;
+mod mpu9250;
 mod fusion;
 mod kalman_filter;
 
@@ -139,6 +140,7 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO07, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     i2c::start(i2c::I2C::I2C1, i2c::I2CMode::Standard, i2c::I2CAddressingMode::SevenBit, i2c::I2CClockSpeed::Standard100kHz, i2c::I2CDataFormat::Data8Bit);
     mpu6050::init(&i2c::I2C::I2C1, mpu6050::AccelRange::G2, mpu6050::GyroRange::D500, mpu6050::Dlpf::Hz94);
+    //mpu9250::init(&i2c::I2C::I2C1, mpu9250::AccelRange::G2, mpu9250::GyroRange::D500, mpu9250::Dlpf::Hz94);
 
     loop
     {
