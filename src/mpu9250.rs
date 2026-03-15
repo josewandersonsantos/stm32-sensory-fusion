@@ -1,6 +1,6 @@
 
 #![allow(dead_code)]
-pub const MPU9250_ADDRESS: u8       = 0x68; // Default I2C address for MPU6050
+pub const MPU9250_ADDRESS: u8       = 0x68; // Default I2C address for MPU6050 (AD0 PULLUP)
 pub const MPU9250_WHO_AM_I: u8      = 0x75; // WHO_AM_I register address
 pub const MPU9250_PWR_MGMT_1: u8    = 0x6B; // Power management register
 pub const MPU9250_ACCEL_XOUT_H: u8  = 0x3B; // Accelerometer X-axis high byte
@@ -40,20 +40,16 @@ pub const MPU9250_I2C_SLV3_CTRL: u8 = 0x30; // I2C Slave 3 control register
 
 /* MPU9250 extra */
 pub const MPU9250_INT_PIN_CFG: u8 = 0x37;
-
 /* Magnetometer AK8963 */
 pub const AK8963_ADDRESS: u8 = 0x0C;
-
 pub const AK8963_WHO_AM_I: u8 = 0x00;
 pub const AK8963_ST1: u8 = 0x02;
-
 pub const AK8963_HXL: u8 = 0x03;
 pub const AK8963_HXH: u8 = 0x04;
 pub const AK8963_HYL: u8 = 0x05;
 pub const AK8963_HYH: u8 = 0x06;
 pub const AK8963_HZL: u8 = 0x07;
 pub const AK8963_HZH: u8 = 0x08;
-
 pub const AK8963_ST2: u8 = 0x09;
 pub const AK8963_CNTL1: u8 = 0x0A;
 pub const AK8963_ASAX: u8 = 0x10;
@@ -101,6 +97,9 @@ pub struct Mpu9250
 /* magnetometer init */
 pub fn mag_init(i2c: &i2c::I2C)
 {
+    i2c::master::read_register8(i2c, AK8963_ADDRESS, AK8963_WHO_AM_I);
+    utils::delay_ms(10);
+
     i2c::master::write_register8(i2c, AK8963_ADDRESS, AK8963_CNTL1, 0x00);
     utils::delay_ms(10);
 
@@ -109,8 +108,10 @@ pub fn mag_init(i2c: &i2c::I2C)
     utils::delay_ms(10);
 }
 
-pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf)
+pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
 {
+    if ! check(i2c) {return 0;}
+
     /* Wake up */
     i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_PWR_MGMT_1, 0x00);
     utils::delay_ms(100);
@@ -127,25 +128,27 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf)
     /* Accel range */
     i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_ACCEL_CONFIG, (accel as u8) << 3);
 
-    // /* Disable FIFO */
-    // i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_FIFO_EN, 0x00);
+    /* Disable FIFO */
+    i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_FIFO_EN, 0x00);
 
-    // /* Disable interrupts */
-    // i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_INT_ENABLE, 0x00);
+    /* Disable interrupts */
+    i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_INT_ENABLE, 0x00);
 
-    // /* Disable I2C master */
-    // i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_USER_CTRL, 0x00);
+    /* Disable I2C master */
+    i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_USER_CTRL, 0x00);
 
     /* enable magnetometer bypass */
     i2c::master::write_register8(i2c, MPU9250_ADDRESS, MPU9250_INT_PIN_CFG, 0x02);
 
     mag_init(i2c);
 
+    return 1;
+
 }
 
 pub fn check(i2c: &i2c::I2C) -> bool
 {
-    i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_WHO_AM_I) == MPU9250_ADDRESS
+    i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_WHO_AM_I) == 0x70
 }
 
 fn read_i16(i2c: &i2c::I2C, reg_h: u8, reg_l: u8) -> i16
