@@ -67,6 +67,7 @@ fn send_frame(frame: &bridge::FrameTx)
         return;
     }
     
+    usart::write(usart::Usart::Usart2, 0x7E);
     usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.header));
     usart::write_bytes(usart::Usart::Usart2, frame.payload);
     usart::write_bytes(usart::Usart::Usart2, utils::as_bytes(&frame.crc));
@@ -127,12 +128,12 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R10Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps);
-
+    
     // USART1 (GPS)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
+    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R1Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps);
     irq::enable_irq(mcu::IRQn::USART1 as u32);
 
     // I2C1 (MPU6050)
@@ -150,6 +151,6 @@ fn main() -> !
         gps_neo6m::process_gps();
         // Send MPU6050 data
         send_mpu_data();
-        utils::delay_ms(500);        
+        utils::delay_ms(100);
     }
 }
