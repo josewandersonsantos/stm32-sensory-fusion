@@ -69,6 +69,15 @@ pub fn build_frame<'a>(tp: FrameType, data: &'a [u8]) -> FrameTx<'a>
     frame
 }
 
+pub fn get_gps_coords<'a>(buf: &'a mut [u8; 12], lat: f32, lng: f32, height: f32,) -> FrameTx<'a>
+{
+    buf[0..4].copy_from_slice(&lat.to_le_bytes());
+    buf[4..8].copy_from_slice(&lng.to_le_bytes());
+    buf[8..12].copy_from_slice(&height.to_le_bytes());
+
+    build_frame(FrameType::FR_TYPE_COORDS, buf)
+}
+
 pub fn get_gps_data<'a>(data: &'a [u8]) -> FrameTx<'a>
 {
     build_frame(FrameType::FR_TYPE_GPS_DATA, data)
