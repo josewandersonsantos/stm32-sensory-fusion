@@ -109,6 +109,13 @@ fn cb_line_from_gps(line: &str)
     send_frame(&frame);
 }
 
+fn cb_coords_from_gps(lat: f32, lng: f32, height : f32)
+{
+    let mut payload = [0u8; 12];
+    let frame: bridge::FrameTx = bridge::get_gps_coords(&mut payload, lat, lng, height);
+    send_frame(&frame);
+}
+
 /*
  * MAIN
  */
@@ -132,7 +139,7 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
-    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R20Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps);
+    gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPS_Frequency::F10Hz, gps_neo6m::GPS_Protocol::NMEA, gps_neo6m::GPS_BaudRate::B9600, gps_neo6m::GPS_UpdateRate::R20Hz, gps_neo6m::GPS_OperationMode::Normal, &[gps_neo6m::GPS_NmeaSentence::GGA, gps_neo6m::GPS_NmeaSentence::RMC], cb_line_from_gps, cb_coords_from_gps);
     irq::enable_irq(mcu::IRQn::USART1 as u32);
 
     // I2C1 (MPU6050)
