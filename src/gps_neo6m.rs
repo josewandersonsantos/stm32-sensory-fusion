@@ -20,6 +20,7 @@ static mut LINE_POS: usize = 0;
  * CALLBACKS
  */
 static mut ON_LINE_RECEIVED: Option<fn(&str)> = None;
+static mut ON_COORDS_RECEIVED: Option<fn(f32, f32, f32)> = None;
 
 /*
  * ENUMS
@@ -270,9 +271,13 @@ pub fn send_ubx_cfg_msg_prt(uart: usart::Usart, port: u8, mode: u8)
     send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_PRT as u8, &payload);
 }
 
-pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol, baud_rate: GPS_BaudRate, update_rate: GPS_UpdateRate, operation_mode: GPS_OperationMode, nmea_sentences: &[GPS_NmeaSentence], callback: fn(&str))
+pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol, baud_rate: GPS_BaudRate, update_rate: GPS_UpdateRate, operation_mode: GPS_OperationMode, nmea_sentences: &[GPS_NmeaSentence], cbLine: fn(&str), cbCoord: fn(f32, f32, f32))
 {
-    unsafe { ON_LINE_RECEIVED = Some(callback) };
+    unsafe
+    { 
+        ON_LINE_RECEIVED = Some(cbLine);
+        ON_COORDS_RECEIVED = Some(cbCoord)
+    };
 
     // --------------------------------------------------
     // SET UPDATE RATE (CFG-RATE)
@@ -387,6 +392,16 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
 
 }
 
+fn nmea_to_decimal(coord: &str) -> f32
+{
+    let raw: f32 = coord.parse().unwrap_or(0.0);
+
+    let degrees = (raw / 100.0) as i32 as f32;
+    let minutes = raw - (degrees * 100.0);
+
+    degrees + (minutes / 60.0)
+}
+
 pub fn deframe_nmea(sentence: &str)
 {
     unsafe
@@ -396,7 +411,34 @@ pub fn deframe_nmea(sentence: &str)
             cb(sentence);
         }
     }
-
+    /*
+     * NMEA GGA (Global Positioning System Fix Data)
+     * 
+     * Example:
+     * $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,46.9,M,,*47
+     * 
+     * Index and fields:
+     * [0]  Message ID           -> "$GPGGA"
+     * [1]  UTC Time             -> "123519" (12:35:19 UTC)
+     * [2]  Latitude             -> "4807.038" (48°07.038')
+     * [3]  N/S                  -> "N" (North/South)
+     * [4]  Longitude            -> "01131.000" (11°31.000')
+     * [5]  E/W                  -> "E" (East/West)
+     * [6]  Fix Quality          -> 0 = inválido, 1 = GPS fix, 2 = DGPS fix, 4 = RTK fix, 5 = RTK float
+     * [7]  Number of Satellites -> "08"
+     * [8]  HDOP                 -> "0.9" (Horizontal Dilution of Precision)
+     * [9]  Altitude             -> "545.4" (metros)
+     * [10] Altitude Unit        -> "M" (metros)
+     * [11] Geoid Separation     -> "46.9" (metros)
+     * [12] Geoid Unit           -> "M"
+     * [13] Age of DGPS          -> (opcional)
+     * [14] DGPS Station ID      -> (opcional)
+     * [*]  Checksum             -> "*47"
+     * 
+     * Obs:
+     * - Latitude/Longitude are in format DDMM.MMMM
+     * - Converter to decimal: decimal = degree + (minutes / 60)
+     */
     if sentence.starts_with("$GPGGA")
     {
         let mut fields: [&str; 15] = [""; 15]; // NMEA GGA 15 fields
@@ -418,13 +460,60 @@ pub fn deframe_nmea(sentence: &str)
 
         if field_count > 5
         {
-            // let lat = fields[2];
-            // let lon = fields[4];
-            /*
-             *
-             */
+            let lat_str = fields[2];
+            let lat_dir_str = fields[3];
+            let lng_str = fields[4];
+            let lng_dir_str = fields[5];
+            let height_str = fields[9];
+
+            let mut lat = nmea_to_decimal(lat_str);
+            let mut lng = nmea_to_decimal(lng_str);
+            let alt: f32 = height_str.parse().unwrap_or(0.0);
+
+            if lat_dir_str == "S"
+            {
+                lat *= -1.0;
+            }
+
+            if lng_dir_str == "W"
+            {
+                lng *= -1.0;
+            }
+
+            unsafe
+            {
+                if let Some(cb) = ON_COORDS_RECEIVED
+                {
+                    cb(lat, lng, alt);
+                }
+            }
         }
     }
+    /*
+     * NMEA RMC (Recommended Minimum Navigation Data)
+     *
+     * Example:
+     * $GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A        
+     *
+     * Indexes and field:
+     * [0]  Message ID          -> "$GPRMC"
+     * [1]  UTC Time            -> "123519" (12:35:19 UTC)
+     * [2]  Status              -> "A" = válido, "V" = inválido
+     * [3]  Latitude            -> "4807.038"
+     * [4]  N/S                 -> "N"
+     * [5]  Longitude           -> "01131.000"
+     * [6]  E/W                 -> "E"
+     * [7]  Speed over ground   -> "022.4" (nós)
+     * [8]  Course (Track)      -> "084.4" (graus)
+     * [9]  Date                -> "230394" (23/03/1994)
+     * [10] Magnetic Variation  -> "003.1"
+     * [11] E/W                 -> "W"
+     * [*]  Checksum            -> "*6A"
+     * 
+     * Obs:
+     * - Velocidade está em nós → converter: km/h = knots * 1.852
+     * - Curso é o heading em relação ao norte verdadeiro
+     */
     else if sentence.starts_with("$GPRMC")
     {
         let mut fields: [&str; 12] = [""; 12]; // NMEA RMC 12 fields
