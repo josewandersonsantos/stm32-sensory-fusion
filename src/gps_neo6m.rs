@@ -309,7 +309,7 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     {
         send_ubx_cfg_msg_msg(uart, class, id, 0); // 0 = desabilita
     }
-
+    
     // --------------------------------------------------
     // ENABLE NME MSGS
     // --------------------------------------------------
@@ -318,72 +318,72 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
         match nmea_sentence
         {
             GPS_NmeaSentence::GGA =>
-                send_ubx_cfg_msg_msg(uart, 0xF0, 0x00, 1),
-
+            send_ubx_cfg_msg_msg(uart, 0xF0, 0x00, 1),
+            
             GPS_NmeaSentence::GLL =>
-                send_ubx_cfg_msg_msg(uart, 0xF0, 0x01, 1),
-
+            send_ubx_cfg_msg_msg(uart, 0xF0, 0x01, 1),
+            
             GPS_NmeaSentence::RMC =>
-                send_ubx_cfg_msg_msg(uart, 0xF0, 0x04, 1),
-
+            send_ubx_cfg_msg_msg(uart, 0xF0, 0x04, 1),
+            
             GPS_NmeaSentence::VTG =>
-                send_ubx_cfg_msg_msg(uart, 0xF0, 0x05, 1),
-
+            send_ubx_cfg_msg_msg(uart, 0xF0, 0x05, 1),
+            
             GPS_NmeaSentence::ZDA =>
-                send_ubx_cfg_msg_msg(uart, 0xF0, 0x08, 1),
+            send_ubx_cfg_msg_msg(uart, 0xF0, 0x08, 1),
         }
     }
 
     // --------------------------------------------------
     // SET PROTOCOL (UBX/NMEA)
     // --------------------------------------------------
-    // match protocol
-    // {
-    //     GPS_Protocol::NMEA =>
-    //     {
-    //     }
+    match protocol
+    {
+        GPS_Protocol::NMEA =>
+        {
+        }
 
-    //     GPS_Protocol::UBX =>
-    //     {
-    //     }
+        GPS_Protocol::UBX =>
+        {
+        }
 
-    //     GPS_Protocol::Both =>
-    //     {
-    //     }
-    // }
+        GPS_Protocol::Both =>
+        {
+        }
+    }
 
     // --------------------------------------------------
     // SET BAUD RATE (CFG-PRT)
     // --------------------------------------------------
-    // let baud: u32 = match baud_rate
-    // {
-    //     GPS_BaudRate::B9600   => 9600,
-    //     GPS_BaudRate::B19200  => 19200,
-    //     GPS_BaudRate::B38400  => 38400,
-    //     GPS_BaudRate::B57600  => 57600,
-    //     GPS_BaudRate::B115200 => 115200,
-    // };
+    let baud: u32 = match baud_rate
+    {
+        GPS_BaudRate::B9600   => 9600,
+        GPS_BaudRate::B19200  => 19200,
+        GPS_BaudRate::B38400  => 38400,
+        GPS_BaudRate::B57600  => 57600,
+        GPS_BaudRate::B115200 => 115200,
+    };
 
-    // let mut payload: [u8; 20] = [0; 20];
+    let mut payload: [u8; 20] = [0; 20];
 
-    // payload[0] = 1; // UART1
-    // payload[1] = 0;
+    payload[0] = 1; // UART1
+    payload[1] = 0;
 
-    // // mode (8N1)
-    // payload[4] = 0xD0;
-    // payload[5] = 0x08;
+    // mode (8N1)
+    payload[4] = 0xD0;
+    payload[5] = 0x08;
 
-    // // baudrate
-    // payload[8]  = (baud & 0xFF) as u8;
-    // payload[9]  = ((baud >> 8) & 0xFF) as u8;
-    // payload[10] = ((baud >> 16) & 0xFF) as u8;
-    // payload[11] = ((baud >> 24) & 0xFF) as u8;
+    // baudrate
+    payload[8]  = (baud & 0xFF) as u8;
+    payload[9]  = ((baud >> 8) & 0xFF) as u8;
+    payload[10] = ((baud >> 16) & 0xFF) as u8;
+    payload[11] = ((baud >> 24) & 0xFF) as u8;
 
-    // // in/out proto (UBX + NMEA)
-    // payload[12] = 0x07;
-    // payload[14] = 0x07;
+    // in/out proto (UBX + NMEA)
+    payload[12] = 0x07;
+    payload[14] = 0x07;
 
-    // send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_PRT as u8, &payload);
+    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_PRT as u8, &payload);
 
 }
 
