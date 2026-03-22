@@ -1,8 +1,8 @@
 use core::ptr;
+
 /*
  * Define the vector table to MCU F103
  */
-
 #[no_mangle]
 extern "C" fn HardFault_Handler() { loop {} }
 #[no_mangle]
