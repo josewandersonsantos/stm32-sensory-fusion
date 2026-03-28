@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use core::{panic::PanicInfo, ptr, sync::atomic::AtomicBool, sync::atomic::Ordering};
+use core::{panic::PanicInfo, sync::atomic::AtomicBool, sync::atomic::Ordering};
 
 mod startup_stm32f103;
 mod utils;
@@ -12,6 +12,8 @@ mod mcu;
 mod rcc;
 mod gpio;
 mod usart;
+mod usb;
+mod watchdog;
 mod irq;
 mod led;
 mod i2c;
@@ -133,7 +135,7 @@ fn main() -> !
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
-    usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
+    usart::start( usart::Usart::Usart2, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B230400, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
     
     // USART1 (GPS)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO09, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
