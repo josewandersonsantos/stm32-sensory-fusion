@@ -12,16 +12,16 @@ pub const WHO_AM_I_VALUE: u8   = 0xEA; // WHO_AM_I register value
  */
 pub const REG_BANK_SEL: u8 = 0x7F;
 
-/// Bits para seleção de banco (escreva no REG_BANK_SEL)
-pub const BIT_BANK_SEL_0: u8 = 0x00;
-pub const BIT_BANK_SEL_1: u8 = 0x10;
-pub const BIT_BANK_SEL_2: u8 = 0x20;
-pub const BIT_BANK_SEL_3: u8 = 0x40;
+/// Bits to select bank (write in REG_BANK_SEL)
+pub const BIT_BANK_SEL_0: u8 = 0b00000000;
+pub const BIT_BANK_SEL_1: u8 = 0b00010000;
+pub const BIT_BANK_SEL_2: u8 = 0b00100000;
+pub const BIT_BANK_SEL_3: u8 = 0b00110000;
 
 /*
  * BANK 0 REGISTERS (main: configuration, data, interrupts, FIFO)
  */
-pub const REG0_WHO_AM_I: u8       = 0x00;   // Valor esperado: 0xEA
+pub const REG0_WHO_AM_I: u8       = 0x00;
 pub const REG0_USER_CTRL: u8      = 0x03;
 pub const REG0_LP_CONFIG: u8      = 0x05;
 pub const REG0_PWR_MGMT_1: u8     = 0x06;
@@ -86,18 +86,18 @@ pub const BIT_INT_PIN_CFG_INT_OPEN: u8       = 0b01000000; // open-drain
 pub const BIT_INT_PIN_CFG_LATCH_INT_EN: u8   = 0b00100000;
 pub const BIT_INT_PIN_CFG_BYPASS_EN: u8      = 0b00000010; // I2C bypass (para magnetômetro AK09916)
 
-// Bits GYRO_CONFIG_1 (Bank 0, 0x1A)
-pub const BIT_GYRO_FS_SEL_2000DPS: u8 = 0b00011000; // [4:3] = 11 → ±2000 dps
-pub const BIT_GYRO_FS_SEL_1000DPS: u8 = 0b00010000;
-pub const BIT_GYRO_FS_SEL_500DPS: u8  = 0b00001000;
-pub const BIT_GYRO_FS_SEL_250DPS: u8  = 0b00000000;
-pub const BIT_GYRO_DLPFCFG: u8        = 0b00000111; // [2:0]
+// // Bits GYRO_CONFIG_1 (Bank 0, 0x1A)
+// pub const BIT_GYRO_FS_SEL_2000DPS: u8 = 0b00011000; // [4:3] = 11 → ±2000 dps
+// pub const BIT_GYRO_FS_SEL_1000DPS: u8 = 0b00010000;
+// pub const BIT_GYRO_FS_SEL_500DPS: u8  = 0b00001000;
+// pub const BIT_GYRO_FS_SEL_250DPS: u8  = 0b00000000;
+// pub const BIT_GYRO_DLPFCFG: u8        = 0b00000111; // [2:0]
 
-// Bits ACCEL_CONFIG (Bank 0, 0x14)
-pub const BIT_ACCEL_FS_SEL_16G: u8 = 0b00011000; // [4:3]
-pub const BIT_ACCEL_FS_SEL_8G: u8  = 0b00010000;
-pub const BIT_ACCEL_FS_SEL_4G: u8  = 0b00001000;
-pub const BIT_ACCEL_FS_SEL_2G: u8  = 0b00000000;
+// // Bits ACCEL_CONFIG (Bank 0, 0x14)
+// pub const BIT_ACCEL_FS_SEL_16G: u8 = 0b00011000; // [4:3]
+// pub const BIT_ACCEL_FS_SEL_8G: u8  = 0b00010000;
+// pub const BIT_ACCEL_FS_SEL_4G: u8  = 0b00001000;
+// pub const BIT_ACCEL_FS_SEL_2G: u8  = 0b00000000;
 
 /*
  * BANK 1 REGISTERS (Self-test, offsets, etc.)
@@ -146,7 +146,7 @@ pub const REG3_I2C_MST_STATUS: u8     = 0x17; // also Bank 0
 // Bits I2C_MST_CTRL
 pub const BIT_I2C_MST_CLK_400KHZ: u8 = 0b00001101; // commom example
 
-static mut LAST_BANK: u8 = BIT_BANK_SEL_0;
+static mut LAST_BANK: u8 = 0xFF;
 
 #[derive(Copy, Clone)]
 pub enum AccelRange
@@ -189,22 +189,28 @@ pub enum Bank
 
 fn check(i2c: &i2c::I2C) -> bool
 {
+    set_bank(i2c, Bank::Bank0);
     i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_WHO_AM_I) == WHO_AM_I_VALUE
 }
 
 fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
 {
-    let bank_bits = match bank
-    {
-        Bank::Bank0 => BIT_BANK_SEL_0,
-        Bank::Bank1 => BIT_BANK_SEL_1,
-        Bank::Bank2 => BIT_BANK_SEL_2,
-        Bank::Bank3 => BIT_BANK_SEL_3,
-        _ => return, // invalid bank
-    };
-
     unsafe
     {
+        if LAST_BANK == 0xFF
+        {
+            LAST_BANK = i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG_BANK_SEL);
+        }
+
+        let bank_bits = match bank
+        {
+            Bank::Bank0 => BIT_BANK_SEL_0,
+            Bank::Bank1 => BIT_BANK_SEL_1,
+            Bank::Bank2 => BIT_BANK_SEL_2,
+            Bank::Bank3 => BIT_BANK_SEL_3,
+            _ => return, // invalid bank
+        };
+
         if LAST_BANK != bank_bits
         {
             LAST_BANK = bank_bits;
@@ -217,8 +223,24 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
 {
     if ! check(i2c) {return 0;}
 
-    /*
-     *
-     */
-    0
+    /* DLPF */
+    // i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, dlpf as u8);
+
+    // Set bank2
+    set_bank(i2c, Bank::Bank2);
+    // Gyro range
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, (gyro as u8) << 1);
+    // Accel range
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_ACCEL_CONFIG, (accel as u8) << 1);
+    
+    // Disable I2C master | Disable FIFO | Reset sensors
+    let user_ctrl:u8 = !BIT_USER_CTRL_I2C_MST_EN | !BIT_USER_CTRL_FIFO_EN | !BIT_USER_CTRL_SIG_COND_RST;
+    set_bank(i2c, Bank::Bank0);
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_USER_CTRL, user_ctrl);
+    
+    // enable magnetometer bypass
+    let int_pin_cfg:u8 = BIT_INT_PIN_CFG_BYPASS_EN;
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_PIN_CFG, int_pin_cfg);
+
+    return 1;
 }
