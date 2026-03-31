@@ -13,9 +13,8 @@
             "type": "cortex-debug",
             "runToEntryPoint": "main",
             "servertype": "stlink",
-            "svdFile": "C:\\ST\\STM32CubeCLT_1.17.0\\STMicroelectronics_CMSIS_SVD\\STM32F103.svd",
+            "svdFile": "${workspaceFolder}/STM32F103.svd",
             "svdPath": "",
-            // "svdPath": "C:\\ST\\STM32CubeCLT_1.17.0\\STMicroelectronics_CMSIS_SVD",
             "device": "STM32F103",
             "preLaunchTask": "rust: cargo build[MCU]",
             "showDevDebugOutput": "raw"
