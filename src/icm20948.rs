@@ -258,71 +258,71 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
 //     (mx,my,mz)
 // }
 
-// pub fn accel_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
-// {
-//     set_bank(i2c, Bank::Bank0);
-//     (
-//         read_i16(i2c, REG0_ACCEL_XOUT_H, REG0_ACCEL_XOUT_L),
-//         read_i16(i2c, REG0_ACCEL_YOUT_H, REG0_ACCEL_YOUT_L),
-//         read_i16(i2c, REG0_ACCEL_ZOUT_H, REG0_ACCEL_ZOUT_L),
-//     )
-// }
+pub fn accel_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
+{
+    set_bank(i2c, Bank::Bank0);
+    (
+        read_i16(i2c, REG0_ACCEL_XOUT_H, REG0_ACCEL_XOUT_L),
+        read_i16(i2c, REG0_ACCEL_YOUT_H, REG0_ACCEL_YOUT_L),
+        read_i16(i2c, REG0_ACCEL_ZOUT_H, REG0_ACCEL_ZOUT_L),
+    )
+}
 
-// pub fn gyro_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
-// {
-//     set_bank(i2c, Bank::Bank0);
-//     (
-//         read_i16(i2c, REG0_GYRO_XOUT_H, REG0_GYRO_XOUT_L),
-//         read_i16(i2c, REG0_GYRO_YOUT_H, REG0_GYRO_YOUT_L),
-//         read_i16(i2c, REG0_GYRO_ZOUT_H, REG0_GYRO_ZOUT_L),
-//     )
-// }
+pub fn gyro_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
+{
+    set_bank(i2c, Bank::Bank0);
+    (
+        read_i16(i2c, REG0_GYRO_XOUT_H, REG0_GYRO_XOUT_L),
+        read_i16(i2c, REG0_GYRO_YOUT_H, REG0_GYRO_YOUT_L),
+        read_i16(i2c, REG0_GYRO_ZOUT_H, REG0_GYRO_ZOUT_L),
+    )
+}
 
-// pub fn temperature_raw(i2c: &i2c::I2C) -> i16
-// {
-//     set_bank(i2c, Bank::Bank0);
-//     read_i16(i2c, REG0_TEMP_OUT_H, REG0_TEMP_OUT_L)
-// }
+pub fn temperature_raw(i2c: &i2c::I2C) -> i16
+{
+    set_bank(i2c, Bank::Bank0);
+    read_i16(i2c, REG0_TEMP_OUT_H, REG0_TEMP_OUT_L)
+}
 
-// pub fn temperature_c(i2c: &i2c::I2C) -> f32
-// {
-//     let raw = temperature_raw(i2c);
-//     (raw as f32) / 340.0 + 36.53
-// }
+pub fn temperature_c(i2c: &i2c::I2C) -> f32
+{
+    let raw = temperature_raw(i2c);
+    (raw as f32) / 340.0 + 36.53
+}
 
-// pub fn accel_g(i2c: &i2c::I2C, range: AccelRange) -> (f32, f32, f32)
-// {
-//     let (x, y, z) = accel_raw(i2c);
-//     let scale = match range
-//     {
-//         AccelRange::G2  => 16384.0,
-//         AccelRange::G4  => 8192.0,
-//         AccelRange::G8  => 4096.0,
-//         AccelRange::G16 => 2048.0,
-//     };
-//     (
-//         x as f32 / scale,
-//         y as f32 / scale,
-//         z as f32 / scale,
-//     )
-// }
+pub fn accel_g(i2c: &i2c::I2C, range: AccelRange) -> (f32, f32, f32)
+{
+    let (x, y, z) = accel_raw(i2c);
+    let scale = match range
+    {
+        AccelRange::G2  => 16384.0,
+        AccelRange::G4  => 8192.0,
+        AccelRange::G8  => 4096.0,
+        AccelRange::G16 => 2048.0,
+    };
+    (
+        x as f32 / scale,
+        y as f32 / scale,
+        z as f32 / scale,
+    )
+}
 
-// pub fn gyro_dps(i2c: &i2c::I2C, range: GyroRange) -> (f32, f32, f32)
-// {
-//     let (x, y, z) = gyro_raw(i2c);
-//     let scale = match range
-//     {
-//         GyroRange::D250  => 131.0,
-//         GyroRange::D500  => 65.5,
-//         GyroRange::D1000 => 32.8,
-//         GyroRange::D2000 => 16.4,
-//     };
-//     (
-//         x as f32 / scale,
-//         y as f32 / scale,
-//         z as f32 / scale,
-//     )
-// }
+pub fn gyro_dps(i2c: &i2c::I2C, range: GyroRange) -> (f32, f32, f32)
+{
+    let (x, y, z) = gyro_raw(i2c);
+    let scale = match range
+    {
+        GyroRange::D250  => 131.0,
+        GyroRange::D500  => 65.5,
+        GyroRange::D1000 => 32.8,
+        GyroRange::D2000 => 16.4,
+    };
+    (
+        x as f32 / scale,
+        y as f32 / scale,
+        z as f32 / scale,
+    )
+}
 
 /* magnetometer init */
 // pub fn mag_init(i2c: &i2c::I2C)
