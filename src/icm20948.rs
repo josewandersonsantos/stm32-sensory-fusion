@@ -146,6 +146,22 @@ pub const REG3_I2C_MST_STATUS: u8     = 0x17; // also Bank 0
 // Bits I2C_MST_CTRL
 pub const BIT_I2C_MST_CLK_400KHZ: u8 = 0b00001101; // commom example
 
+/* Magnetometer AK09916 */
+// pub const AK09916_ADDRESS: u8 = 0x0C;
+// pub const AK09916_WHO_AM_I: u8 = 0x01;
+// pub const AK09916_ST1: u8 = 0x10;
+// pub const AK09916_HXL: u8 = 0x11;
+// pub const AK09916_HXH: u8 = 0x12;
+// pub const AK09916_HYL: u8 = 0x13;
+// pub const AK09916_HYH: u8 = 0x14;
+// pub const AK09916_HZL: u8 = 0x15;
+// pub const AK09916_HZH: u8 = 0x16;
+// pub const AK09916_ST2: u8 = 0x18;
+// pub const AK09916_CNTL2: u8 = 0x31;
+// pub const AK09916_CNTL3: u8 = 0x32;
+// pub const AK09916_TS1: u8 = 0x33;
+// pub const AK09916_TS2: u8 = 0x34;
+
 static mut LAST_BANK: u8 = 0xFF;
 
 #[derive(Copy, Clone)]
@@ -193,6 +209,13 @@ fn check(i2c: &i2c::I2C) -> bool
     i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_WHO_AM_I) == WHO_AM_I_VALUE
 }
 
+fn read_i16(i2c: &i2c::I2C, reg_h: u8, reg_l: u8) -> i16
+{
+    let h = i2c::master::read_register8(i2c, ICM20948_ADDRESS, reg_h);
+    let l = i2c::master::read_register8(i2c, ICM20948_ADDRESS, reg_l);
+    ((h as i16) << 8) | (l as i16)
+}
+
 fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
 {
     unsafe
@@ -219,28 +242,127 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
     }
 }
 
+/* magnetometer burst */
+// pub fn mag_raw(i2c: &i2c::I2C) -> (i16,i16,i16)
+// {
+//     let mut buf = [0u8;7];
+
+//     while i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_ST1) & 1 == 0 {}
+
+//     // i2c::master::read_bytes(i2c, AK09916_ADDRESS, AK09916_HXL, &mut buf);
+
+//     let mx = ((buf[1] as i16) << 8) | buf[0] as i16;
+//     let my = ((buf[3] as i16) << 8) | buf[2] as i16;
+//     let mz = ((buf[5] as i16) << 8) | buf[4] as i16;
+
+//     (mx,my,mz)
+// }
+
+// pub fn accel_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
+// {
+//     set_bank(i2c, Bank::Bank0);
+//     (
+//         read_i16(i2c, REG0_ACCEL_XOUT_H, REG0_ACCEL_XOUT_L),
+//         read_i16(i2c, REG0_ACCEL_YOUT_H, REG0_ACCEL_YOUT_L),
+//         read_i16(i2c, REG0_ACCEL_ZOUT_H, REG0_ACCEL_ZOUT_L),
+//     )
+// }
+
+// pub fn gyro_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
+// {
+//     set_bank(i2c, Bank::Bank0);
+//     (
+//         read_i16(i2c, REG0_GYRO_XOUT_H, REG0_GYRO_XOUT_L),
+//         read_i16(i2c, REG0_GYRO_YOUT_H, REG0_GYRO_YOUT_L),
+//         read_i16(i2c, REG0_GYRO_ZOUT_H, REG0_GYRO_ZOUT_L),
+//     )
+// }
+
+// pub fn temperature_raw(i2c: &i2c::I2C) -> i16
+// {
+//     set_bank(i2c, Bank::Bank0);
+//     read_i16(i2c, REG0_TEMP_OUT_H, REG0_TEMP_OUT_L)
+// }
+
+// pub fn temperature_c(i2c: &i2c::I2C) -> f32
+// {
+//     let raw = temperature_raw(i2c);
+//     (raw as f32) / 340.0 + 36.53
+// }
+
+// pub fn accel_g(i2c: &i2c::I2C, range: AccelRange) -> (f32, f32, f32)
+// {
+//     let (x, y, z) = accel_raw(i2c);
+//     let scale = match range
+//     {
+//         AccelRange::G2  => 16384.0,
+//         AccelRange::G4  => 8192.0,
+//         AccelRange::G8  => 4096.0,
+//         AccelRange::G16 => 2048.0,
+//     };
+//     (
+//         x as f32 / scale,
+//         y as f32 / scale,
+//         z as f32 / scale,
+//     )
+// }
+
+// pub fn gyro_dps(i2c: &i2c::I2C, range: GyroRange) -> (f32, f32, f32)
+// {
+//     let (x, y, z) = gyro_raw(i2c);
+//     let scale = match range
+//     {
+//         GyroRange::D250  => 131.0,
+//         GyroRange::D500  => 65.5,
+//         GyroRange::D1000 => 32.8,
+//         GyroRange::D2000 => 16.4,
+//     };
+//     (
+//         x as f32 / scale,
+//         y as f32 / scale,
+//         z as f32 / scale,
+//     )
+// }
+
+/* magnetometer init */
+// pub fn mag_init(i2c: &i2c::I2C)
+// {
+//     i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_WHO_AM_I);
+//     utils::delay_ms(10);
+
+//     i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x00);
+//     utils::delay_ms(10);
+
+//     /* continuous mode 2, 16bit */
+//     i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x04);
+//     utils::delay_ms(10);
+// }
+
 pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
 {
     if ! check(i2c) {return 0;}
 
-    /* DLPF */
-    // i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, dlpf as u8);
-
-    // Set bank2
-    set_bank(i2c, Bank::Bank2);
-    // Gyro range
-    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, (gyro as u8) << 1);
-    // Accel range
-    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_ACCEL_CONFIG, (accel as u8) << 1);
-    
-    // Disable I2C master | Disable FIFO | Reset sensors
-    let user_ctrl:u8 = !BIT_USER_CTRL_I2C_MST_EN | !BIT_USER_CTRL_FIFO_EN | !BIT_USER_CTRL_SIG_COND_RST;
     set_bank(i2c, Bank::Bank0);
-    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_USER_CTRL, user_ctrl);
-    
-    // enable magnetometer bypass
+    // Reset
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_PWR_MGMT_1, 0x80);
+    utils::delay_ms(100);
+    // Wake up
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_PWR_MGMT_1, 0x01);
+        
+    // Disable I2C master | Disable FIFO | Reset sensors
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_USER_CTRL, 0x00);
+    // Enable all axis of accel and gyro
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_PWR_MGMT_2, 0x00);
+    // Enable magnetometer bypass
     let int_pin_cfg:u8 = BIT_INT_PIN_CFG_BYPASS_EN;
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_PIN_CFG, int_pin_cfg);
+    
+    // Gyro range Accel range
+    set_bank(i2c, Bank::Bank2);
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, (gyro as u8) << 1);
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_ACCEL_CONFIG, (accel as u8) << 1);
+
+    // mag_init(i2c);
 
     return 1;
 }
