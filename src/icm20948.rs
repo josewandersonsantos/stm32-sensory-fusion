@@ -147,20 +147,20 @@ pub const REG3_I2C_MST_STATUS: u8     = 0x17; // also Bank 0
 pub const BIT_I2C_MST_CLK_400KHZ: u8 = 0b00001101; // commom example
 
 /* Magnetometer AK09916 */
-// pub const AK09916_ADDRESS: u8 = 0x0C;
-// pub const AK09916_WHO_AM_I: u8 = 0x01;
-// pub const AK09916_ST1: u8 = 0x10;
-// pub const AK09916_HXL: u8 = 0x11;
-// pub const AK09916_HXH: u8 = 0x12;
-// pub const AK09916_HYL: u8 = 0x13;
-// pub const AK09916_HYH: u8 = 0x14;
-// pub const AK09916_HZL: u8 = 0x15;
-// pub const AK09916_HZH: u8 = 0x16;
-// pub const AK09916_ST2: u8 = 0x18;
-// pub const AK09916_CNTL2: u8 = 0x31;
-// pub const AK09916_CNTL3: u8 = 0x32;
-// pub const AK09916_TS1: u8 = 0x33;
-// pub const AK09916_TS2: u8 = 0x34;
+pub const AK09916_ADDRESS: u8 = 0x0C;
+pub const AK09916_WHO_AM_I: u8 = 0x01;
+pub const AK09916_ST1: u8 = 0x10;
+pub const AK09916_HXL: u8 = 0x11;
+pub const AK09916_HXH: u8 = 0x12;
+pub const AK09916_HYL: u8 = 0x13;
+pub const AK09916_HYH: u8 = 0x14;
+pub const AK09916_HZL: u8 = 0x15;
+pub const AK09916_HZH: u8 = 0x16;
+pub const AK09916_ST2: u8 = 0x18;
+pub const AK09916_CNTL2: u8 = 0x31;
+pub const AK09916_CNTL3: u8 = 0x32;
+pub const AK09916_TS1: u8 = 0x33;
+pub const AK09916_TS2: u8 = 0x34;
 
 static mut LAST_BANK: u8 = 0xFF;
 
@@ -325,18 +325,18 @@ pub fn gyro_dps(i2c: &i2c::I2C, range: GyroRange) -> (f32, f32, f32)
 }
 
 /* magnetometer init */
-// pub fn mag_init(i2c: &i2c::I2C)
-// {
-//     i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_WHO_AM_I);
-//     utils::delay_ms(10);
+pub fn mag_init(i2c: &i2c::I2C)
+{
+    i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_WHO_AM_I);
+    utils::delay_ms(10);
 
-//     i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x00);
-//     utils::delay_ms(10);
+    i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x00);
+    utils::delay_ms(10);
 
-//     /* continuous mode 2, 16bit */
-//     i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x04);
-//     utils::delay_ms(10);
-// }
+    /* continuous mode 2, 16bit */
+    i2c::master::write_register8(i2c, AK09916_ADDRESS, AK09916_CNTL2, 0x04);
+    utils::delay_ms(10);
+}
 
 pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
 {
@@ -361,8 +361,9 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
     set_bank(i2c, Bank::Bank2);
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, (gyro as u8) << 1);
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_ACCEL_CONFIG, (accel as u8) << 1);
-
-    // mag_init(i2c);
+    
+    // Setup Magnometer (AK09916)
+    mag_init(i2c);
 
     return 1;
 }
