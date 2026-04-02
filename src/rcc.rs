@@ -10,14 +10,25 @@ pub mod apb1
     {
         Tim2,
         Tim3,
+        Tim4,
+        Tim5,
+        Tim6,
+        Tim7,
+        Wwdg,
+        Spi2,
+        Spi3,
         Usart2,
         Usart3,
+        Usart4,
+        Usart5,
         I2C1,
         I2C2,
         Usb,
-        /*
-         *
-         */
+        Can1,
+        Can2,
+        Bkp,
+        Pwr,
+        Dac
     }
 
     fn bit_of(peripheral: Apb1Peripheral) -> u8
@@ -26,14 +37,25 @@ pub mod apb1
         {
             Apb1Peripheral::Tim2 => 0,
             Apb1Peripheral::Tim3 => 1,
+            Apb1Peripheral::Tim4 => 2,
+            Apb1Peripheral::Tim5 => 3,
+            Apb1Peripheral::Tim6 => 4,
+            Apb1Peripheral::Tim7 => 5,
+            Apb1Peripheral::Wwdg => 11,
+            Apb1Peripheral::Spi2 => 14,
+            Apb1Peripheral::Spi3 => 15,
             Apb1Peripheral::Usart2 => 17,
             Apb1Peripheral::Usart3 => 18,
+            Apb1Peripheral::Usart4 => 19,
+            Apb1Peripheral::Usart5 => 20,
             Apb1Peripheral::I2C1 => 21,
             Apb1Peripheral::I2C2 => 22,
             Apb1Peripheral::Usb => 23,
-            /* 
-             *
-             */
+            Apb1Peripheral::Can1 => 25,
+            Apb1Peripheral::Can2 => 26,
+            Apb1Peripheral::Bkp => 27,
+            Apb1Peripheral::Pwr => 28,
+            Apb1Peripheral::Dac => 29
         }
     }
 
@@ -108,6 +130,51 @@ pub mod apb2
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_APB2ENR as *mut u32;
+        utils::clear_bit(reg, bit);
+    }
+}
+
+
+pub mod ahb
+{
+    use super::*;
+
+    pub enum AHBPeripheral
+    {
+        Dma1,
+        Dma2,
+        Sram,
+        Flitf,
+        Crc,
+        Fsmc,
+        Sdio,
+    }
+
+    fn bit_of(peripheral: AHBPeripheral) -> u8
+    {
+        match peripheral
+        {
+            AHBPeripheral::Dma1 => 0,
+            AHBPeripheral::Dma2 => 1,
+            AHBPeripheral::Sram => 2,
+            AHBPeripheral::Flitf => 4,
+            AHBPeripheral::Crc => 6,
+            AHBPeripheral::Fsmc => 8,
+            AHBPeripheral::Sdio => 10,
+        }
+    }
+
+    pub fn enable(peripheral: AHBPeripheral)
+    {
+        let bit = bit_of(peripheral);
+        let reg = mcu::RCC_AHBENR as *mut u32;
+        utils::set_bit(reg, bit);
+    }
+
+    pub fn disable(peripheral: AHBPeripheral)
+    {
+        let bit = bit_of(peripheral);
+        let reg = mcu::RCC_AHBENR as *mut u32;
         utils::clear_bit(reg, bit);
     }
 }
