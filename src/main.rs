@@ -12,15 +12,17 @@ mod mcu;
 mod rcc;
 mod gpio;
 mod usart;
-mod usb;
-mod watchdog;
+// mod usb;
+// mod crc;
+// mod watchdog;
 mod irq;
 mod led;
 mod i2c;
 mod bridge;
 mod gps_neo6m;
-mod mpu6050;
-mod mpu9250;
+// mod mpu6050;
+// mod mpu9250;
+mod icm20948;
 mod fusion;
 mod kalman_filter;
 
@@ -78,10 +80,16 @@ fn send_frame(frame: &bridge::FrameTx)
 
 fn send_mpu_data()
 {
-    // Read MPU6050 data
-    let (acc_x, acc_y, acc_z) = mpu6050::accel_g(&i2c::I2C::I2C1, mpu6050::AccelRange::G2);
-    let (gyr_x, gyr_y, gyr_z) = mpu6050::gyro_dps(&i2c::I2C::I2C1, mpu6050::GyroRange::D500);
-    let temp_c                          = mpu6050::temperature_c(&i2c::I2C::I2C1);
+    // Read ICM20948 data
+    let (acc_x, acc_y, acc_z) = icm20948::accel_g(&i2c::I2C::I2C1, icm20948::AccelRange::G2);
+    let (gyr_x, gyr_y, gyr_z) = icm20948::gyro_dps(&i2c::I2C::I2C1, icm20948::GyroRange::D500);
+    let temp_c                          = icm20948::temperature_c(&i2c::I2C::I2C1);
+    // let (mag_x, mag_y, mag_z)                = icm20948::mag_raw(&i2c::I2C::I2C1);
+
+    // if acc_x == 0.0 || acc_y == 0.0 || acc_z == 0.0 || gyr_x == 0.0 || gyr_y == 0.0 || gyr_z == 0.0
+    // {
+    //     return;
+    // }
 
     let mut payload = [0u8; 28];
     let frame = bridge::get_package_mpu_data(&mut payload, acc_x, acc_y, acc_z, gyr_x, gyr_y, gyr_z, temp_c);
@@ -129,8 +137,14 @@ fn main() -> !
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPb);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPa);
     
+    //rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
+    //rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Wwdg);
+    
     // PC13 (LED)
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
+    
+    // USB
+    //usb::init();
     
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
@@ -148,8 +162,9 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO07, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     i2c::start(i2c::I2C::I2C1, i2c::I2CMode::Standard, i2c::I2CAddressingMode::SevenBit, i2c::I2CClockSpeed::Standard100kHz, i2c::I2CDataFormat::Data8Bit);
-    mpu6050::init(&i2c::I2C::I2C1, mpu6050::AccelRange::G2, mpu6050::GyroRange::D500, mpu6050::Dlpf::Hz94);
+    //mpu6050::init(&i2c::I2C::I2C1, mpu6050::AccelRange::G2, mpu6050::GyroRange::D500, mpu6050::Dlpf::Hz94);
     //mpu9250::init(&i2c::I2C::I2C1, mpu9250::AccelRange::G2, mpu9250::GyroRange::D500, mpu9250::Dlpf::Hz94);
+    icm20948::init(&i2c::I2C::I2C1, icm20948::AccelRange::G16, icm20948::GyroRange::D250, icm20948::Dlpf::Hz94);
 
     loop
     {
@@ -158,6 +173,8 @@ fn main() -> !
         // Process GPS data
         gps_neo6m::process_gps();
         // Send MPU6050 data
+        //send_mpu_data();
+        // Send ICM20948 data
         send_mpu_data();
         utils::delay_ms(50);
     }
