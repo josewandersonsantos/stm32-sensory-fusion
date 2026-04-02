@@ -243,20 +243,20 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
 }
 
 /* magnetometer burst */
-// pub fn mag_raw(i2c: &i2c::I2C) -> (i16,i16,i16)
-// {
-//     let mut buf = [0u8;7];
+pub fn mag_raw(i2c: &i2c::I2C) -> (i16,i16,i16)
+{
+    let mut buf = [0u8;7];
 
-//     while i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_ST1) & 1 == 0 {}
+    while i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_ST1) & 1 == 0 {}
 
-//     // i2c::master::read_bytes(i2c, AK09916_ADDRESS, AK09916_HXL, &mut buf);
+    i2c::master::read_bytes(i2c, AK09916_ADDRESS, AK09916_HXL, &mut buf);
 
-//     let mx = ((buf[1] as i16) << 8) | buf[0] as i16;
-//     let my = ((buf[3] as i16) << 8) | buf[2] as i16;
-//     let mz = ((buf[5] as i16) << 8) | buf[4] as i16;
+    let mx = ((buf[1] as i16) << 8) | buf[0] as i16;
+    let my = ((buf[3] as i16) << 8) | buf[2] as i16;
+    let mz = ((buf[5] as i16) << 8) | buf[4] as i16;
 
-//     (mx,my,mz)
-// }
+    (mx,my,mz)
+}
 
 pub fn accel_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
 {
