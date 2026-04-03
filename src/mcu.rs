@@ -152,6 +152,7 @@ pub const RCC_AHBENR_ETHTX: u32 = 0x0000_00; // ETH MAC TX clock enable
 pub const RCC_AHBENR_ETHRX: u32 = 0x0000_00; // ETH MAC RX clock enable
 
 pub const RCC_APB1ENR: u32 = RCC_ADDR + 0x1C; // RCC_APB1ENR offset
+pub const RCC_APB1RSTR: u32 = RCC_ADDR + 0x20; // RCC_APB1RSTR offset
 pub const RCC_APB1ENR_TIM2: u32 = 0x0000_0001; // TIM2 clock enable
 pub const RCC_APB1ENR_TIM3: u32 = 0x0000_0002; // TIM3 clock enable
 pub const RCC_APB1ENR_USART2: u32 = 0x0000_0004; // USART2 clock enable
@@ -301,6 +302,36 @@ pub const WWDG_BASE: u32 = 0x4000_2C00; // WWDG base address
 pub const WWDG_CR: u32 = WWDG_BASE + 0x00; // Control register
 pub const WWDG_CFR: u32 = WWDG_BASE + 0x04; // Configuration register
 pub const WWDG_SR: u32 = WWDG_BASE + 0x08; // Status register
+
+/*
+ * Memory-mapped addresses for CRC
+ */
+pub const CRC_BASE: u32 = 0x4002_3000; // CRC base address
+pub const CRC_DR: u32 = CRC_BASE + 0x00; // Data register
+pub const CRC_IDR: u32 = CRC_BASE + 0x04; // Independent
+pub const CRC_CR: u32 = CRC_BASE + 0x08; // Control register
+pub const CRC_INIT: u32 = CRC_BASE + 0x10; // Initial CRC value register
+pub const CRC_POL: u32 = CRC_BASE + 0x14; // Polynomial register
+
+/*
+ * Memory-mapped addresses for USB
+ */
+// pub const USB_BASE: u32 = 0x4000_5C00; // USB base address
+// pub const USB_EP0R: u32 = USB_BASE + 0x00; // Endpoint 0 register
+// pub const USB_EP1R: u32 = USB_BASE + 0x04; // Endpoint 1 register
+// pub const USB_EP2R: u32 = USB_BASE + 0x08; // Endpoint 2 register
+// pub const USB_EP3R: u32 = USB_BASE + 0x0C; // Endpoint 3 register
+// pub const USB_EP4R: u32 = USB_BASE + 0x10; // Endpoint 4 register
+// pub const USB_EP5R: u32 = USB_BASE + 0x14; // Endpoint 5 register
+// pub const USB_EP6R: u32 = USB_BASE + 0x18; // Endpoint 6 register
+// pub const USB_EP7R: u32 = USB_BASE + 0x1C; // Endpoint 7 register
+// pub const USB_CNTR: u32 = USB_BASE + 0x40; // Control register
+// pub const USB_ISTR: u32 = USB_BASE + 0x44; // Interrupt status register
+// pub const USB_FNR: u32 = USB_BASE + 0x48; // Frame number register
+// pub const USB_DADDR: u32 = USB_BASE + 0x4C; // Device address register
+// pub const USB_BTABLE: u32 = USB_BASE + 0x50; // Buffer table address register
+// pub const USB_LPMCSR: u32 = USB_BASE + 0x54; // LPM control and status register
+// pub const USB_BCDR: u32 = USB_BASE + 0x58; // Battery charging detector register
 
 #[allow(non_camel_case_types)]
 pub enum IRQn
