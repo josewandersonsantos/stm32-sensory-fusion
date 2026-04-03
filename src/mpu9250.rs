@@ -280,7 +280,7 @@ pub fn gyro_dps(i2c: &i2c::I2C, range: GyroRange) -> (f32, f32, f32)
 
 pub fn who_am_i(i2c: &i2c::I2C) -> u8
 {
-    i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_WHO_AM_I)
+    i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_WHO_AM_I) as u8
 }
 
 pub fn reset(i2c: &i2c::I2C)
@@ -291,7 +291,7 @@ pub fn reset(i2c: &i2c::I2C)
 
 pub fn sleep(i2c: &i2c::I2C, enable: bool)
 {
-    let mut v = i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_PWR_MGMT_1);
+    let mut v = i2c::master::read_register8(i2c, MPU9250_ADDRESS, MPU9250_PWR_MGMT_1) as u8;
     if enable
     {
         v |= 1 << 6;
