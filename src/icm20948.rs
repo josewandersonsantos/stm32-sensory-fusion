@@ -361,7 +361,7 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange) ->u8
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_PIN_CFG, int_pin_cfg);
     // Enable int pin on data ready
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_ENABLE_1, 0x01);
-    
+
     // Gyro range Accel range
     set_bank(i2c, Bank::Bank2);
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG2_GYRO_CONFIG_1, (gyro as u8) << 1);
@@ -369,6 +369,7 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange) ->u8
     
     // Setup Magnometer (AK09916)
     mag_init(i2c);
+    clear_data_ready(i2c);
 
     return 1;
 }
