@@ -289,4 +289,61 @@ pub mod master
             value
         }
     }
+
+    // pub fn read_bytes(i2c: &I2C, device_addr: u8, reg_addr: u8, buffer: &mut [u8]) -> i32
+    // {
+    //     let i2c_base = get_base(i2c);
+    //     let timeout = 100_000;
+    //     let len = buffer.len();
+
+    //     if len == 0 { return 0;}
+
+    //     unsafe
+    //     {
+    //         // START
+    //         if start_condition(i2c_base) == 0 { return -1; }
+
+    //         utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
+
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8, true, timeout) < 0 { return -1; }
+
+    //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
+    //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
+
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::TXE as u8, true, timeout) < 0 { return -1; }
+
+    //         utils::write_register(reg(i2c_base, mcu::I2C_DR), reg_addr as u32);
+
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::BTF as u8, true, timeout) < 0 { return -1; }
+
+    //         // Repeated START
+    //         if start_condition(i2c_base) == 0 { return -1; }
+
+    //         utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_READ_BIT) as u32);
+
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8, true, timeout) < 0 { return -1; }
+
+    //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
+    //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
+
+    //         // Enable ACK (multi-byte)
+    //         utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::ACK as u8);
+
+    //         for i in 0..len
+    //         {
+    //             if i == len - 1
+    //             {
+    //                 // last byte → NACK + STOP
+    //                 utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::ACK as u8);
+    //                 stop_condition(i2c_base);
+    //             }
+
+    //             if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::RXNE as u8, true, timeout) < 0 { return -1; }
+
+    //             buffer[i] = utils::read_register(reg(i2c_base, mcu::I2C_DR)) as u8;
+    //         }
+
+    //         0
+    //     }
+    // }
 }
