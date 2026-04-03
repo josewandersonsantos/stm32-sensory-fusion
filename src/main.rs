@@ -10,6 +10,7 @@ mod utils;
 mod checksum;
 mod mcu;
 mod rcc;
+mod exti;
 mod gpio;
 mod usart;
 //mod usb;
@@ -38,6 +39,13 @@ fn panic(_info: &PanicInfo) -> !
 /*
  * CALLBACKS IT
  */
+#[no_mangle]
+pub extern "C" fn EXTI4_Handler()
+{
+    exti::clear_pending_interrupt(mcu::GPIO04);
+    send_mpu_data();
+}
+
 #[no_mangle]
 pub extern "C" fn USART1_Handler()
 {
@@ -86,10 +94,7 @@ fn send_mpu_data()
     let temp_c                          = icm20948::temperature_c(&i2c::I2C::I2C1);
     let (mag_x, mag_y, mag_z) = icm20948::mag_raw(&i2c::I2C::I2C1);
 
-    // if acc_x == 0.0 || acc_y == 0.0 || acc_z == 0.0 || gyr_x == 0.0 || gyr_y == 0.0 || gyr_z == 0.0
-    // {
-    //     return;
-    // }
+    icm20948::clear_data_ready(&i2c::I2C::I2C1);
 
     let mut payload = [0u8; 28];
     let frame = bridge::get_package_mpu_data(&mut payload, acc_x, acc_y, acc_z, gyr_x, gyr_y, gyr_z, temp_c);
@@ -157,14 +162,22 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO10, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
     usart::start(usart::Usart::Usart1, usart::UsartMode::TxRx, usart::UsartInterrupt::RxInterrupt, usart::UsartBaudRate::B9600, usart::UsartWordLength::Length8Bits, usart::UsartStopBits::Stop1Bit, usart::UsartParity::None);
     gps_neo6m::init(usart::Usart::Usart1, gps_neo6m::GPSProtocol::NMEA, gps_neo6m::GPSBaudRate::B9600, gps_neo6m::GPSUpdateRate::R20Hz, gps_neo6m::GPSOperationMode::Normal, &[gps_neo6m::GPSNmeaSentence::GGA, gps_neo6m::GPSNmeaSentence::RMC], cb_line_from_gps, cb_coords_from_gps);
-    irq::enable_irq(mcu::IRQn::USART1 as u32);
+    irq::enable_irq(irq::IRQn::USART1 as u32);
 
-    // I2C1 (MPU6050)
+    // I2C1 (ICM20948)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO06, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO07, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz));
     i2c::start(i2c::I2C::I2C1, i2c::I2CClockSpeed::Standard100kHz);
     icm20948::init(&i2c::I2C::I2C1, icm20948::AccelRange::G2, icm20948::GyroRange::D250);
-
+    // ICM20948 Pin IT
+    gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO04, gpio::GpioMode::Input, gpio::GpioConfig::PullUpDown, None);
+    gpio::write_pin(mcu::GPIOB_BASE, mcu::GPIO04, true);
+    exti::gpio::set_edge(mcu::GPIO04, exti::gpio::EdgeTrigger::RisingFalling);
+    exti::configure_afio(exti::cfg_by_port(mcu::GPIOB_BASE), mcu::GPIO04);
+    exti::enable_interrupt(mcu::GPIO04);
+    exti::clear_pending_interrupt(mcu::GPIO04);
+    irq::enable_irq(irq::IRQn::EXTI4 as u32);
+    
     loop
     {
         // Refresh IWDG
@@ -174,7 +187,7 @@ fn main() -> !
         // Process GPS data
         gps_neo6m::process_gps();
         // Send ICM20948 data
-        send_mpu_data();
+        // send_mpu_data();
         // Delay
         utils::delay_ms(50);
     }
