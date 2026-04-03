@@ -15,6 +15,7 @@ pub mod iwdg
 
     pub fn init(timeout_ms: u32)
     {
+        // !TODO <Verify how to disable on debug mode>
         let iwdg_kr = mcu::IWDG_KR as *mut u32;
         let iwdg_pr = mcu::IWDG_PR as *mut u32;
         let iwdg_rlr = mcu::IWDG_RLR as *mut u32;
