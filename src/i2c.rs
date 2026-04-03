@@ -35,7 +35,7 @@ pub enum I2CDataFormat
     Data8Bit,
     Data16Bit
 }
-pub enum I2C_CR1
+pub enum I2CCR1
 {
     PE       = 0,  // Peripheral Enable
     SMBUS    = 1,  // SMBus Mode
@@ -52,7 +52,7 @@ pub enum I2C_CR1
     ALERT    = 13, // SMBus Alert
     SWRST    = 15, // Software Reset
 } 
-pub enum I2C_SR1
+pub enum I2CSR1
 {
     SB       = 0,  // Start Bit
     ADDR     = 1,  // Address Sent/Matched
@@ -70,7 +70,7 @@ pub enum I2C_SR1
     SMBALERT = 15, // SMBus Alert
 }
 
-pub enum I2C_SR2
+pub enum I2CSR2
 {
     MSL     = 0,  // Master/Slave
     BUSY    = 1,  // Bus Busy
@@ -108,16 +108,16 @@ fn wait_read_bit(i2c_base: u32, offset: u32, bit: u8, exp: u8) -> u8
 
 fn start_condition(i2c_base: u32) -> u8
 {
-    utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::START as u8); // START
-    wait_read_bit(i2c_base, mcu::I2C_SR1, I2C_SR1::SB as u8, 0)
+    utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::START as u8); // START
+    wait_read_bit(i2c_base, mcu::I2C_SR1, I2CSR1::SB as u8, 0)
 }
 
 fn stop_condition(i2c_base: u32)
 {
-    utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::STOP as u8); // STOP
+    utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::STOP as u8); // STOP
 }
 
-pub fn start(i2c: I2C, mode: I2CMode, addressing_mode: I2CAddressingMode, clock_speed: I2CClockSpeed, data_format: I2CDataFormat)
+pub fn start(i2c: I2C, clock_speed: I2CClockSpeed)
 {
     let i2c_base = match i2c
     {
@@ -135,7 +135,7 @@ pub fn start(i2c: I2C, mode: I2CMode, addressing_mode: I2CAddressingMode, clock_
     unsafe 
     {
         // Disable the I2C peripheral before configuration
-        utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::PE as u8);
+        utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::PE as u8);
         
         // ====== PCLK1 = 8 MHz ======
         // CR2: frequência do APB1 em MHz
@@ -175,7 +175,7 @@ pub fn start(i2c: I2C, mode: I2CMode, addressing_mode: I2CAddressingMode, clock_
         }
 
         // Enable peripheral
-        utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::PE as u8);
+        utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::PE as u8);
     }
 }
 
@@ -218,26 +218,26 @@ pub mod master
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
 
             // Wait ADDR
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::ADDR as u8) == 0 {}
 
             // Clear ADDR
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
 
             // Wait TXE
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::TXE as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::TXE as u8) == 0 {}
 
             // Send register address
             utils::write_register(reg(i2c_base, mcu::I2C_DR), reg_addr as u32);
 
             // Wait TXE
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::TXE as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::TXE as u8) == 0 {}
 
             // Send data
             utils::write_register(reg(i2c_base, mcu::I2C_DR), value as u32);
 
             // Wait BTF
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::BTF as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::BTF as u8) == 0 {}
 
             stop_condition(i2c_base);
         }
@@ -254,37 +254,37 @@ pub mod master
 
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
 
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::ADDR as u8) == 0 {}
 
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
 
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::TXE as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::TXE as u8) == 0 {}
 
             utils::write_register(reg(i2c_base, mcu::I2C_DR), reg_addr as u32);
 
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::BTF as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::BTF as u8) == 0 {}
 
             // ---- Repeated START ----
             if start_condition(i2c_base) == 0 { return 0;}
 
             utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_READ_BIT) as u32);
 
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::ADDR as u8) == 0 {}
             
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
             let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
             
-            utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::ACK as u8); // ACK = 0
+            utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::ACK as u8); // ACK = 0
 
             stop_condition(i2c_base);
 
-            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::RXNE as u8) == 0 {}
+            while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::RXNE as u8) == 0 {}
 
             let value = utils::read_register(reg(i2c_base, mcu::I2C_DR)) as u8;
 
             // Wait STOPF
-            // while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::STOPF as u8) == 0 {}
+            // while utils::read_bit(reg(i2c_base, mcu::I2C_SR1), I2CSR1::STOPF as u8) == 0 {}
 
             value
         }
@@ -305,40 +305,40 @@ pub mod master
 
     //         utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_WRITE_BIT) as u32);
 
-    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8, true, timeout) < 0 { return -1; }
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2CSR1::ADDR as u8, true, timeout) < 0 { return -1; }
 
     //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
     //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
 
-    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::TXE as u8, true, timeout) < 0 { return -1; }
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2CSR1::TXE as u8, true, timeout) < 0 { return -1; }
 
     //         utils::write_register(reg(i2c_base, mcu::I2C_DR), reg_addr as u32);
 
-    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::BTF as u8, true, timeout) < 0 { return -1; }
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2CSR1::BTF as u8, true, timeout) < 0 { return -1; }
 
     //         // Repeated START
     //         if start_condition(i2c_base) == 0 { return -1; }
 
     //         utils::write_register(reg(i2c_base, mcu::I2C_DR), ((device_addr << 1) | I2C_READ_BIT) as u32);
 
-    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::ADDR as u8, true, timeout) < 0 { return -1; }
+    //         if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2CSR1::ADDR as u8, true, timeout) < 0 { return -1; }
 
     //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR1));
     //         let _ = utils::read_register(reg(i2c_base, mcu::I2C_SR2));
 
     //         // Enable ACK (multi-byte)
-    //         utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::ACK as u8);
+    //         utils::set_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::ACK as u8);
 
     //         for i in 0..len
     //         {
     //             if i == len - 1
     //             {
     //                 // last byte → NACK + STOP
-    //                 utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2C_CR1::ACK as u8);
+    //                 utils::clear_bit(reg(i2c_base, mcu::I2C_CR1), I2CCR1::ACK as u8);
     //                 stop_condition(i2c_base);
     //             }
 
-    //             if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2C_SR1::RXNE as u8, true, timeout) < 0 { return -1; }
+    //             if wait_flag(reg(i2c_base, mcu::I2C_SR1), I2CSR1::RXNE as u8, true, timeout) < 0 { return -1; }
 
     //             buffer[i] = utils::read_register(reg(i2c_base, mcu::I2C_DR)) as u8;
     //         }
