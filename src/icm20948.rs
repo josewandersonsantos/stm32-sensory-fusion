@@ -209,10 +209,10 @@ fn check(i2c: &i2c::I2C) -> bool
     i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_WHO_AM_I) == WHO_AM_I_VALUE
 }
 
-fn read_i16(i2c: &i2c::I2C, reg_h: u8, reg_l: u8) -> i16
+fn read_i16(i2c: &i2c::I2C, device_addr:u8, reg_h: u8, reg_l: u8) -> i16
 {
-    let h = i2c::master::read_register8(i2c, ICM20948_ADDRESS, reg_h);
-    let l = i2c::master::read_register8(i2c, ICM20948_ADDRESS, reg_l);
+    let h = i2c::master::read_register8(i2c, device_addr, reg_h);
+    let l = i2c::master::read_register8(i2c, device_addr, reg_l);
     ((h as i16) << 8) | (l as i16)
 }
 
@@ -245,15 +245,11 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
 /* magnetometer burst */
 pub fn mag_raw(i2c: &i2c::I2C) -> (i16,i16,i16)
 {
-    let mut buf = [0u8;7];
-
     while i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_ST1) & 1 == 0 {}
-
-    i2c::master::read_bytes(i2c, AK09916_ADDRESS, AK09916_HXL, &mut buf);
-
-    let mx = ((buf[1] as i16) << 8) | buf[0] as i16;
-    let my = ((buf[3] as i16) << 8) | buf[2] as i16;
-    let mz = ((buf[5] as i16) << 8) | buf[4] as i16;
+    let mx = read_i16(i2c, AK09916_ADDRESS, AK09916_HXH, AK09916_HXL);
+    let my = read_i16(i2c, AK09916_ADDRESS, AK09916_HYH, AK09916_HYL);
+    let mz = read_i16(i2c, AK09916_ADDRESS, AK09916_HZH, AK09916_HZL);
+    i2c::master::read_register8(i2c, AK09916_ADDRESS, AK09916_ST2);
 
     (mx,my,mz)
 }
@@ -262,9 +258,9 @@ pub fn accel_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
 {
     set_bank(i2c, Bank::Bank0);
     (
-        read_i16(i2c, REG0_ACCEL_XOUT_H, REG0_ACCEL_XOUT_L),
-        read_i16(i2c, REG0_ACCEL_YOUT_H, REG0_ACCEL_YOUT_L),
-        read_i16(i2c, REG0_ACCEL_ZOUT_H, REG0_ACCEL_ZOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_ACCEL_XOUT_H, REG0_ACCEL_XOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_ACCEL_YOUT_H, REG0_ACCEL_YOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_ACCEL_ZOUT_H, REG0_ACCEL_ZOUT_L),
     )
 }
 
@@ -272,16 +268,16 @@ pub fn gyro_raw(i2c: &i2c::I2C) -> (i16, i16, i16)
 {
     set_bank(i2c, Bank::Bank0);
     (
-        read_i16(i2c, REG0_GYRO_XOUT_H, REG0_GYRO_XOUT_L),
-        read_i16(i2c, REG0_GYRO_YOUT_H, REG0_GYRO_YOUT_L),
-        read_i16(i2c, REG0_GYRO_ZOUT_H, REG0_GYRO_ZOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_GYRO_XOUT_H, REG0_GYRO_XOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_GYRO_YOUT_H, REG0_GYRO_YOUT_L),
+        read_i16(i2c, ICM20948_ADDRESS, REG0_GYRO_ZOUT_H, REG0_GYRO_ZOUT_L),
     )
 }
 
 pub fn temperature_raw(i2c: &i2c::I2C) -> i16
 {
     set_bank(i2c, Bank::Bank0);
-    read_i16(i2c, REG0_TEMP_OUT_H, REG0_TEMP_OUT_L)
+    read_i16(i2c, ICM20948_ADDRESS,REG0_TEMP_OUT_H, REG0_TEMP_OUT_L)
 }
 
 pub fn temperature_c(i2c: &i2c::I2C) -> f32
