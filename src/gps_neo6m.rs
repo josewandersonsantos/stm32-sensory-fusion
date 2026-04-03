@@ -25,21 +25,21 @@ static mut ON_COORDS_RECEIVED: Option<fn(f32, f32, f32)> = None;
 /*
  * ENUMS
  */
-pub enum GPS_Frequency
+pub enum GPSFrequency
 {
     F1Hz,
     F5Hz,
     F10Hz,
 }
 
-pub enum GPS_Protocol
+pub enum GPSProtocol
 {
     NMEA,
     UBX,
     Both,
 }
 
-pub enum GPS_BaudRate
+pub enum GPSBaudRate
 {
     B9600,
     B19200,
@@ -48,7 +48,7 @@ pub enum GPS_BaudRate
     B115200,
 }
 
-pub enum GPS_UpdateRate
+pub enum GPSUpdateRate
 {
     R1Hz,
     R5Hz,
@@ -57,14 +57,14 @@ pub enum GPS_UpdateRate
     R100Hz,
 }
 
-pub enum GPS_OperationMode
+pub enum GPSOperationMode
 {
     Normal,
     PowerSaving,
     Airborne,
 }
 
-pub enum GPS_NmeaSentence
+pub enum GPSNmeaSentence
 {
     GGA,
     RMC,
@@ -73,7 +73,7 @@ pub enum GPS_NmeaSentence
     ZDA,
 }
 
-pub enum UBX_Class
+pub enum UBXClass
 {
     NAV = 0x01,
     RXM = 0x02,
@@ -90,13 +90,13 @@ pub enum UBX_Class
     SEC = 0x27,
 }
 
-pub enum UBX_Id
+pub enum UBXId
 {
-    NAV_PVT = 0x07,
-    CFG_PRT = 0x00,
-    CFG_MSG = 0x01,
-    CFG_RATE = 0x08,
-    CFG_NAV5 = 0x24,
+    NavPvt = 0x07,
+    CfgPrt = 0x00,
+    CfgMsg = 0x01,
+    CfgRate = 0x08,
+    CfgNav5 = 0x24,
 }
 
 pub fn push_byte(byte: u8)
@@ -205,22 +205,22 @@ pub fn send_ubx_message(uart: usart::Usart, class: u8, id: u8, payload: &[u8])
     usart::write_bytes(uart, &buffer[..message_len]);
     return;
 
-    // Get ACK
-    let mut ack_buffer: [u8; 10] = [0; 10];
-    let mut ack_index = 0;
-    while ack_index < 10
-    {
-        if let Some(byte) = pop_byte()
-        {
-            ack_buffer[ack_index] = byte;
-            ack_index += 1;
+    // // Get ACK
+    // let mut ack_buffer: [u8; 10] = [0; 10];
+    // let mut ack_index = 0;
+    // while ack_index < 10
+    // {
+    //     if let Some(byte) = pop_byte()
+    //     {
+    //         ack_buffer[ack_index] = byte;
+    //         ack_index += 1;
 
-            if ack_index >= 2 && &ack_buffer[ack_index-2..ack_index] == [0xB5, 0x62]
-            {
-                break; // Início do ACK recebido
-            }
-        }
-    }
+    //         if ack_index >= 2 && &ack_buffer[ack_index-2..ack_index] == [0xB5, 0x62]
+    //         {
+    //             break; // Início do ACK recebido
+    //         }
+    //     }
+    // }
 }
 
 pub fn send_ubx_cfg_msg_rate(uart: usart::Usart, rate_ms: u16)
@@ -232,22 +232,22 @@ pub fn send_ubx_cfg_msg_rate(uart: usart::Usart, rate_ms: u16)
         0x00, // timeRef
     ];
 
-    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_RATE as u8, &payload);
+    send_ubx_message(uart, UBXClass::CFG as u8, UBXId::CfgRate as u8, &payload);
 }
 
-pub fn send_ubx_cfg_msg_nav5(uart: usart::Usart, mode: GPS_OperationMode)
+pub fn send_ubx_cfg_msg_nav5(uart: usart::Usart, mode: GPSOperationMode)
 {
     let mut payload: [u8; 36] = [0; 36];
     payload[0] = 0x05; // mask: set dynamic model
     payload[1] = 0x00;
     payload[2] = match mode
     {
-        GPS_OperationMode::Normal => 0x00, // Portable
-        GPS_OperationMode::PowerSaving => 0x02, // Stationary
-        GPS_OperationMode::Airborne => 0x06, // Airborne <1g
+        GPSOperationMode::Normal => 0x00, // Portable
+        GPSOperationMode::PowerSaving => 0x02, // Stationary
+        GPSOperationMode::Airborne => 0x06, // Airborne <1g
     };
 
-    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_NAV5 as u8, &payload);
+    send_ubx_message(uart, UBXClass::CFG as u8, UBXId::CfgNav5 as u8, &payload);
 }
 
 pub fn send_ubx_cfg_msg_msg(uart: usart::Usart, msg_class: u8, msg_id: u8, rate: u8)
@@ -258,7 +258,7 @@ pub fn send_ubx_cfg_msg_msg(uart: usart::Usart, msg_class: u8, msg_id: u8, rate:
         rate,
     ];
 
-    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_MSG as u8, &payload);
+    send_ubx_message(uart, UBXClass::CFG as u8, UBXId::CfgMsg as u8, &payload);
 }
 
 pub fn send_ubx_cfg_msg_prt(uart: usart::Usart, port: u8, mode: u8)
@@ -268,15 +268,15 @@ pub fn send_ubx_cfg_msg_prt(uart: usart::Usart, port: u8, mode: u8)
         mode,
     ];
 
-    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_PRT as u8, &payload);
+    send_ubx_message(uart, UBXClass::CFG as u8, UBXId::CfgPrt as u8, &payload);
 }
 
-pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol, baud_rate: GPS_BaudRate, update_rate: GPS_UpdateRate, operation_mode: GPS_OperationMode, nmea_sentences: &[GPS_NmeaSentence], cbLine: fn(&str), cbCoord: fn(f32, f32, f32))
+pub fn init(uart: usart::Usart, protocol: GPSProtocol, baud_rate: GPSBaudRate, update_rate: GPSUpdateRate, operation_mode: GPSOperationMode, nmea_sentences: &[GPSNmeaSentence], cb_line: fn(&str), cb_coords: fn(f32, f32, f32))
 {
     unsafe
     { 
-        ON_LINE_RECEIVED = Some(cbLine);
-        ON_COORDS_RECEIVED = Some(cbCoord)
+        ON_LINE_RECEIVED = Some(cb_line);
+        ON_COORDS_RECEIVED = Some(cb_coords)
     };
 
     // --------------------------------------------------
@@ -284,11 +284,11 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     // --------------------------------------------------
     let rate_ms: u16 = match update_rate
     {
-        GPS_UpdateRate::R1Hz  => 1000,
-        GPS_UpdateRate::R5Hz  => 200,
-        GPS_UpdateRate::R10Hz => 100,
-        GPS_UpdateRate::R20Hz => 50,
-        GPS_UpdateRate::R100Hz => 10,
+        GPSUpdateRate::R1Hz  => 1000,
+        GPSUpdateRate::R5Hz  => 200,
+        GPSUpdateRate::R10Hz => 100,
+        GPSUpdateRate::R20Hz => 50,
+        GPSUpdateRate::R100Hz => 10,
     };
 
     send_ubx_cfg_msg_rate(uart, rate_ms);
@@ -322,19 +322,19 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     {
         match nmea_sentence
         {
-            GPS_NmeaSentence::GGA =>
+            GPSNmeaSentence::GGA =>
             send_ubx_cfg_msg_msg(uart, 0xF0, 0x00, 1),
             
-            GPS_NmeaSentence::GLL =>
+            GPSNmeaSentence::GLL =>
             send_ubx_cfg_msg_msg(uart, 0xF0, 0x01, 1),
             
-            GPS_NmeaSentence::RMC =>
+            GPSNmeaSentence::RMC =>
             send_ubx_cfg_msg_msg(uart, 0xF0, 0x04, 1),
             
-            GPS_NmeaSentence::VTG =>
+            GPSNmeaSentence::VTG =>
             send_ubx_cfg_msg_msg(uart, 0xF0, 0x05, 1),
             
-            GPS_NmeaSentence::ZDA =>
+            GPSNmeaSentence::ZDA =>
             send_ubx_cfg_msg_msg(uart, 0xF0, 0x08, 1),
         }
     }
@@ -344,15 +344,15 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     // --------------------------------------------------
     match protocol
     {
-        GPS_Protocol::NMEA =>
+        GPSProtocol::NMEA =>
         {
         }
 
-        GPS_Protocol::UBX =>
+        GPSProtocol::UBX =>
         {
         }
 
-        GPS_Protocol::Both =>
+        GPSProtocol::Both =>
         {
         }
     }
@@ -362,11 +362,11 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     // --------------------------------------------------
     let baud: u32 = match baud_rate
     {
-        GPS_BaudRate::B9600   => 9600,
-        GPS_BaudRate::B19200  => 19200,
-        GPS_BaudRate::B38400  => 38400,
-        GPS_BaudRate::B57600  => 57600,
-        GPS_BaudRate::B115200 => 115200,
+        GPSBaudRate::B9600   => 9600,
+        GPSBaudRate::B19200  => 19200,
+        GPSBaudRate::B38400  => 38400,
+        GPSBaudRate::B57600  => 57600,
+        GPSBaudRate::B115200 => 115200,
     };
 
     let mut payload: [u8; 20] = [0; 20];
@@ -388,7 +388,7 @@ pub fn init(uart: usart::Usart, frequency: GPS_Frequency, protocol: GPS_Protocol
     payload[12] = 0x07;
     payload[14] = 0x07;
 
-    send_ubx_message(uart, UBX_Class::CFG as u8, UBX_Id::CFG_PRT as u8, &payload);
+    send_ubx_message(uart, UBXClass::CFG as u8, UBXId::CfgPrt as u8, &payload);
 
 }
 
