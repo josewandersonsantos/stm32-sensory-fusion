@@ -240,6 +240,15 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
     }
 }
 
+pub fn clear_data_ready(i2c: &i2c::I2C)
+{
+    set_bank(i2c, Bank::Bank0);
+    // i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_INT_STATUS);
+    i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_INT_STATUS_1);
+    // i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_INT_STATUS_2);
+    // i2c::master::read_register8(i2c, ICM20948_ADDRESS, REG0_INT_STATUS_3);
+}
+
 /* magnetometer burst */
 pub fn mag_raw(i2c: &i2c::I2C) -> (i16,i16,i16)
 {
@@ -350,6 +359,8 @@ pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange) ->u8
     // Enable magnetometer bypass
     let int_pin_cfg:u8 = BIT_INT_PIN_CFG_BYPASS_EN;
     i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_PIN_CFG, int_pin_cfg);
+    // Enable int pin on data ready
+    i2c::master::write_register8(i2c, ICM20948_ADDRESS, REG0_INT_ENABLE_1, 0x01);
     
     // Gyro range Accel range
     set_bank(i2c, Bank::Bank2);
