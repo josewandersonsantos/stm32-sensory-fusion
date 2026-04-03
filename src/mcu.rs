@@ -285,6 +285,23 @@ pub const EXTI_FTSR: u32 = EXTI_BASE + 0x0C;    // Falling Trigger Selection Reg
 pub const EXTI_SWIER: u32 = EXTI_BASE + 0x10;   // Software Interrupt Event Register
 pub const EXTI_PR: u32 = EXTI_BASE + 0x14;      // Pending Register
 
+/*
+ * Memory-mapped addresses for IWDG
+ */
+pub const IWDG_BASE: u32 = 0x4000_3000; // IWDG base address
+pub const IWDG_KR: u32 = IWDG_BASE + 0x00; // Key register
+pub const IWDG_PR: u32 = IWDG_BASE + 0x04; // Prescaler register
+pub const IWDG_RLR: u32 = IWDG_BASE + 0x08; // Reload register
+pub const IWDG_SR: u32 = IWDG_BASE + 0x0C; // Status register
+
+/*
+ * Memory-mapped addresses for WWDG
+ */
+pub const WWDG_BASE: u32 = 0x4000_2C00; // WWDG base address
+pub const WWDG_CR: u32 = WWDG_BASE + 0x00; // Control register
+pub const WWDG_CFR: u32 = WWDG_BASE + 0x04; // Configuration register
+pub const WWDG_SR: u32 = WWDG_BASE + 0x08; // Status register
+
 #[allow(non_camel_case_types)]
 pub enum IRQn
 {
