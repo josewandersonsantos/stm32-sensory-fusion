@@ -12,8 +12,8 @@ mod mcu;
 mod rcc;
 mod gpio;
 mod usart;
-// mod usb;
-// mod crc;
+//mod usb;
+mod crc;
 mod watchdog;
 mod irq;
 mod led;
@@ -167,14 +167,14 @@ fn main() -> !
 
     loop
     {
+        // Refresh IWDG
+        watchdog::iwdg::refresh();
         // Toggle LED on PC13
         led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
         // Process GPS data
         gps_neo6m::process_gps();
         // Send ICM20948 data
         send_mpu_data();
-        // Refresh IWDG
-        watchdog::iwdg::refresh();
         // Delay
         utils::delay_ms(50);
     }
