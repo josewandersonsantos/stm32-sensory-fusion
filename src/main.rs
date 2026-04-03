@@ -172,7 +172,7 @@ fn main() -> !
     // ICM20948 Pin IT
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO04, gpio::GpioMode::Input, gpio::GpioConfig::PullUpDown, None);
     gpio::write_pin(mcu::GPIOB_BASE, mcu::GPIO04, true);
-    exti::gpio::set_edge(mcu::GPIO04, exti::gpio::EdgeTrigger::RisingFalling);
+    exti::gpio::set_edge(mcu::GPIO04, exti::gpio::EdgeTrigger::Rising);
     exti::configure_afio(exti::cfg_by_port(mcu::GPIOB_BASE), mcu::GPIO04);
     exti::enable_interrupt(mcu::GPIO04);
     exti::clear_pending_interrupt(mcu::GPIO04);
