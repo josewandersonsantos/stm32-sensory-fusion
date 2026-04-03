@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::utils;
-use crate::mcu;
 use crate::i2c;
 
 pub const ICM20948_ADDRESS: u8 = 0x68; // Default I2C address for ICM20948 (AD0 PULLDOWN)
@@ -230,8 +229,7 @@ fn set_bank(i2c: &i2c::I2C, bank: Bank) -> ()
             Bank::Bank0 => BIT_BANK_SEL_0,
             Bank::Bank1 => BIT_BANK_SEL_1,
             Bank::Bank2 => BIT_BANK_SEL_2,
-            Bank::Bank3 => BIT_BANK_SEL_3,
-            _ => return, // invalid bank
+            Bank::Bank3 => BIT_BANK_SEL_3
         };
 
         if LAST_BANK != bank_bits
@@ -334,7 +332,7 @@ pub fn mag_init(i2c: &i2c::I2C)
     utils::delay_ms(10);
 }
 
-pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange, dlpf: Dlpf) ->u8
+pub fn init(i2c: &i2c::I2C, accel: AccelRange, gyro: GyroRange) ->u8
 {
     if ! check(i2c) {return 0;}
 
