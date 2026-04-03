@@ -59,7 +59,7 @@ pub mod wwdg
 {
     use crate::{mcu, rcc, utils};
 
-    fn init(_timeout_ms: u32)
+    pub fn init(_timeout_ms: u32)
     {        
         let wwdg_cr = mcu::WWDG_CR as *mut u32;
         let wwdg_cfr = mcu::WWDG_CFR as *mut u32;
@@ -75,7 +75,7 @@ pub mod wwdg
         }
     }
 
-    fn refresh()
+    pub fn refresh()
     {
         let wwdg_cr = mcu::WWDG_CR as *mut u32;
         unsafe
@@ -84,7 +84,7 @@ pub mod wwdg
         }
     }
 
-    fn disable()
+    pub fn disable()
     {
         let rcc_apb1enr = mcu::RCC_APB1ENR as *mut u32;
         utils::clear_bit(rcc_apb1enr, 11);
