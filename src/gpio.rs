@@ -102,3 +102,31 @@ pub fn configure_pin(port_base: u32, pin: u32, mode: GpioMode, config: GpioConfi
         utils::write_bits(config_reg, shift, mode_bits);
     }
 }
+
+pub fn read_pin(port_base: u32, pin: u32) -> bool
+{
+    let idr = (port_base + 0x08) as *const u32; // IDR
+    unsafe
+    {
+        let value = utils::read_register(idr);
+        (value & (1 << pin)) != 0
+    }
+}
+
+pub fn write_pin(port_base: u32, pin: u32, state: bool)
+{
+    let odr = (port_base + 0x0C) as *mut u32; // ODR
+    unsafe
+    {
+        let current = utils::read_register(odr);
+        let new_value = if state
+        {
+            current | (1 << pin)
+        }
+        else
+        {
+            current & !(1 << pin)
+        };
+        utils::write_register(odr, new_value);
+    }
+}
