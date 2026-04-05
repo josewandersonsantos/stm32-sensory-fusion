@@ -3,7 +3,7 @@
 Projeto embarcado em Rust para fusão sensorial com **Blue Pill (STM32F103)**, utilizando os sensores:
 
 - 🛰️ **GPS NEO-6M** para localização geográfica (via protocolo NMEA)
-- 🧭 **~~MPU6050~~/~~MPU9250~~/ICM20948** para leitura de aceleração e giroscópio
+- 🧭 **~~MPU6050~~/~~MPU9250~~/ICM20948** para leitura de aceleração, giroscópio e magnômetro
 
 ## Objetivo
 
@@ -11,7 +11,7 @@ Integrar e processar dados de sensores para criar uma base de navegação confi�
 
 ## Funcionalidades
 - Leitura de dados do GPS via UART (com parsing do protocolo NMEA)
-- Comunicação com MPUXXXX via I2C
+- Comunicação com ~~MPUXXXX~~ ICMXXXXX via I2C
 - Integração futura com filtro de fusão sensorial (ex: Complementar, Kalman)
 - Escrita em **Rust** com `#![no_std]`, focando em eficiência e segurança
 
@@ -21,7 +21,7 @@ Integrar e processar dados de sensores para criar uma base de navegação confi�
 src/
 ├── main.rs           # Ponto de entrada
 ├── gps.rs            # Parser NMEA e leitura UART
-├── mpu.rs            # Leitura do MPU6050 via I2C
+├── icm20948.rs       # Leitura do ICM20948 via I2C
 ├── fusion.rs         # Lógica de fusão sensorial (em breve)
 └── utils.rs          # Funções auxiliares
 ```
