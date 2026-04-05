@@ -13,7 +13,7 @@ mod rcc;
 mod exti;
 mod gpio;
 mod usart;
-//mod usb;
+// mod usb;
 mod crc;
 mod watchdog;
 mod irq;
@@ -40,6 +40,12 @@ fn panic(_info: &PanicInfo) -> !
  * CALLBACKS IT
  */
 #[no_mangle]
+pub extern "C" fn USB_LP_CAN_RX0_Handler()
+{
+    //usb::handle_usb_interrupt();
+}
+
+#[no_mangle]
 pub extern "C" fn EXTI4_Handler()
 {
     send_mpu_data();
@@ -54,14 +60,14 @@ pub extern "C" fn USART1_Handler()
         let usart1_sr = (mcu::USART1_BASE + mcu::USART_SR) as *const u32;
         let usart1_dr = (mcu::USART1_BASE + mcu::USART_DR) as *mut u32;
 
-        let sr = utils::read_register(usart1_sr);
+        let sr = utils::read_register32(usart1_sr);
         if (sr & mcu::USART_SR_RXNE) != 0
         {
-            let data = utils::read_register(usart1_dr) as u8;
+            let data = utils::read_register32(usart1_dr) as u8;
             gps_neo6m::push_byte(data);
 
-            //while (utils::read_register(usart1_sr) & mcu::USART_SR_TXE) == 0 {}
-            // utils::write_register(usart1_dr, data as u32);
+            //while (utils::read_register32(usart1_sr) & mcu::USART_SR_TXE) == 0 {}
+            // utils::write_register32(usart1_dr, data as u32);
             //usart::write(usart::Usart::Usart2, data);
         }
     }
@@ -137,21 +143,31 @@ fn cb_coords_from_gps(lat: f32, lng: f32, height : f32)
 #[no_mangle]
 fn main() -> !
 {
+    mcu::init_clock(mcu::SysClock::HSE8MHz, false);
+
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::Afio);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPc);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPb);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPa);
-    //rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
+    rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
     
     // IWDG
     watchdog::iwdg::init(500);
     
     // PC13 (LED)
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
-    
-    // USB
-    //usb::init();
-    
+        
+    // // USB
+    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
+    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    // usb::init();
+
+    // loop
+    // {
+    //     led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
+    //     utils::delay_ms(100);
+    // }
+
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);

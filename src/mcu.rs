@@ -2,7 +2,9 @@
 // for STM32F103C8T6.
 
 #![allow(dead_code)]
-pub const CLOCK_FREQUENCY: u32 = 8_000_000; // 8 MHz clock frequency
+
+use crate::utils;
+static mut CLOCK_FREQUENCY: u32 = 8_000_000; // 8 MHz clock frequency
 /*
  * Memory-mapped addresses for GPIO ports
  */
@@ -31,6 +33,13 @@ pub const GPIO12:u32 = 0x0C;
 pub const GPIO13:u32 = 0x0D;
 pub const GPIO14:u32 = 0x0E;
 pub const GPIO15:u32 = 0x0F;
+
+/*
+ * Memory-mapped addresses for FLASH
+ */
+pub const FLASH_BASE: u32 = 0x0800_0000; // FLASH base address
+pub const FLASH_ACR: u32 = 0x4002_2000; // FLASH access control register
+pub const FLASH_KEYR: u32 = 0x4002_2004; // FLASH key register 
 
 /*
  * Memory-mapped addresses for USART
@@ -141,6 +150,7 @@ pub const RCC_CR: u32 = RCC_ADDR + 0x00; // RCC_CR offset
 pub const RCC_CFGR: u32 = RCC_ADDR + 0x04; // RCC_CFGR offset
 
 pub const RCC_AHBENR: u32 = RCC_ADDR + 0x14; // RCC_AHBENR offset
+pub const RCC_AHBRSTR: u32 = RCC_ADDR + 0x28; // RCC_AHBRSTR offset
 pub const RCC_AHBENR_DMA1: u32 = 0x0000_0001; // DMA1 clock enable
 pub const RCC_AHBENR_DMA2: u32 = 0x0000_0002; // DMA2 clock enable
 pub const RCC_AHBENR_SRAM: u32 = 0x0000_0004; // SRAM clock enable
@@ -165,6 +175,7 @@ pub const RCC_APB1ENR_BKP: u32 = 0x0000_0100; // Backup interface clock enable
 pub const RCC_APB1ENR_PWR: u32 = 0x0000_0200; // Power interface clock enable
 
 pub const RCC_APB2ENR: u32 = RCC_ADDR + 0x18; // RCC_APB2ENR offset
+pub const RCC_APB2RSTR: u32 = RCC_ADDR + 0x24; // RCC_APB2RSTR offset
 pub const RCC_APB2ENR_AFIOEN: u32 = 0x0000_0000; // AFIO clock enable
 pub const RCC_APB2ENR_RESERVED: u32 = 0x0000_0001; // Reserved
 pub const RCC_APB2ENR_IOPAEN: u32 = 0x0000_0002; // GPIOA clock enable
@@ -316,19 +327,176 @@ pub const CRC_POL: u32 = CRC_BASE + 0x14; // Polynomial register
 /*
  * Memory-mapped addresses for USB
  */
-// pub const USB_BASE: u32 = 0x4000_5C00; // USB base address
-// pub const USB_EP0R: u32 = USB_BASE + 0x00; // Endpoint 0 register
-// pub const USB_EP1R: u32 = USB_BASE + 0x04; // Endpoint 1 register
-// pub const USB_EP2R: u32 = USB_BASE + 0x08; // Endpoint 2 register
-// pub const USB_EP3R: u32 = USB_BASE + 0x0C; // Endpoint 3 register
-// pub const USB_EP4R: u32 = USB_BASE + 0x10; // Endpoint 4 register
-// pub const USB_EP5R: u32 = USB_BASE + 0x14; // Endpoint 5 register
-// pub const USB_EP6R: u32 = USB_BASE + 0x18; // Endpoint 6 register
-// pub const USB_EP7R: u32 = USB_BASE + 0x1C; // Endpoint 7 register
-// pub const USB_CNTR: u32 = USB_BASE + 0x40; // Control register
-// pub const USB_ISTR: u32 = USB_BASE + 0x44; // Interrupt status register
-// pub const USB_FNR: u32 = USB_BASE + 0x48; // Frame number register
-// pub const USB_DADDR: u32 = USB_BASE + 0x4C; // Device address register
-// pub const USB_BTABLE: u32 = USB_BASE + 0x50; // Buffer table address register
-// pub const USB_LPMCSR: u32 = USB_BASE + 0x54; // LPM control and status register
-// pub const USB_BCDR: u32 = USB_BASE + 0x58; // Battery charging detector register
+pub const USB_BASE: u32 = 0x4000_5C00; // USB base address
+pub const USB_EP0R: u32 = USB_BASE + 0x00; // Endpoint 0 register
+pub const USB_EP1R: u32 = USB_BASE + 0x04; // Endpoint 1 register
+pub const USB_EP2R: u32 = USB_BASE + 0x08; // Endpoint 2 register
+pub const USB_EP3R: u32 = USB_BASE + 0x0C; // Endpoint 3 register
+pub const USB_EP4R: u32 = USB_BASE + 0x10; // Endpoint 4 register
+pub const USB_EP5R: u32 = USB_BASE + 0x14; // Endpoint 5 register
+pub const USB_EP6R: u32 = USB_BASE + 0x18; // Endpoint 6 register
+pub const USB_EP7R: u32 = USB_BASE + 0x1C; // Endpoint 7 register
+pub const USB_CNTR: u32 = USB_BASE + 0x40; // Control register
+pub const USB_ISTR: u32 = USB_BASE + 0x44; // Interrupt status register
+pub const USB_FNR: u32 = USB_BASE + 0x48; // Frame number register
+pub const USB_DADDR: u32 = USB_BASE + 0x4C; // Device address register
+pub const USB_BTABLE: u32 = USB_BASE + 0x50; // Buffer table address register
+pub const USB_LPMCSR: u32 = USB_BASE + 0x54; // LPM control and status register
+pub const USB_BCDR: u32 = USB_BASE + 0x58; // Battery charging detector register
+
+pub enum SysClock
+{
+    HSE8MHz  = 8_000_000,
+    HSE24MHz = 24_000_000,
+    HSE36MHz = 36_000_000,
+    HSE48MHz = 48_000_000,
+    HSE72MHz = 72_000_000,
+}
+
+pub fn init_clock(sys_clk: SysClock, use_usb: bool) -> u8
+{
+    let hse: u32 = 8_000_000;
+    let sysclk = match sys_clk
+    {
+        SysClock::HSE8MHz => 8_000_000,
+        SysClock::HSE24MHz => 24_000_000,
+        SysClock::HSE36MHz => 36_000_000,
+        SysClock::HSE48MHz => 48_000_000,
+        SysClock::HSE72MHz => 72_000_000,
+    };
+
+    unsafe { CLOCK_FREQUENCY = sysclk; };
+
+    // =========================
+    // 1. Calcular PLL
+    // =========================
+    let pll_mul = sysclk / hse;
+
+    if pll_mul < 2 || pll_mul > 16
+    {
+        //return Err("PLL multiplier invalid");
+        return 0;
+    }
+
+    if sysclk != hse * pll_mul
+    {
+        // return Err("Frequency not multiple of HSE");
+        return 0;
+    }
+
+    // =========================
+    // 2. USB check
+    // =========================
+    let usb_ok = match sysclk
+    {
+        72_000_000 => true,
+        48_000_000 => true,
+        _ => false,
+    };
+
+    if use_usb && !usb_ok
+    {
+        // return Err("Frequency not compatible with USB");
+        return 0;
+    }
+
+    unsafe
+    {
+        let rcc_cr   = RCC_CR as *mut u32;
+        let rcc_cfgr = RCC_CFGR as *mut u32;
+        let flash_acr= FLASH_ACR as *mut u32;
+
+        // =========================
+        // HSE ON
+        // =========================
+        utils::set_bit32(rcc_cr, 16);
+
+        while utils::read_bit32(rcc_cr, 17) == 0 {}
+
+        // =========================
+        // FLASH latency
+        // =========================
+        let latency = 
+        if sysclk <= 24_000_000
+        {
+            0
+        }
+        else if sysclk <= 48_000_000
+        {
+            1
+        }
+        else
+        {
+            2
+        };
+
+        utils::write_register32(flash_acr, latency | (1 << 4)); // prefetch
+
+        // =========================
+        // Prescalers
+        // =========================
+        let mut cfgr = utils::read_register32(rcc_cfgr);
+
+        // AHB = SYSCLK
+        cfgr &= !(0b1111 << 4);
+
+        // APB1
+        if sysclk > 36_000_000
+        {
+            cfgr |= (0b100 << 8); // divide by 2
+        }
+        else
+        {
+            cfgr &= !(0b111 << 8);
+        }
+
+        // APB2 = full
+        cfgr &= !(0b111 << 11);
+
+        // =========================
+        // PLL
+        // =========================
+        cfgr |= (1 << 16); // HSE source
+        cfgr &= !(1 << 17);
+
+        cfgr &= !(0b1111 << 18);
+        cfgr |= ((pll_mul - 2) << 18);
+
+        // USB prescaler
+        if sysclk == 72_000_000
+        {
+            cfgr &= !(1 << 22); // /1.5
+        }
+        else if sysclk == 48_000_000
+        {
+            cfgr |= (1 << 22); // /1
+        }
+
+        utils::write_register32(rcc_cfgr, cfgr);
+
+        // =========================
+        // PLL ON
+        // =========================
+        utils::set_bit32(rcc_cr, 24);
+
+        while utils::read_bit32(rcc_cr, 25) == 0 {}
+
+        // =========================
+        // Switch
+        // =========================
+        let mut cfgr = utils::read_register32(rcc_cfgr);
+        cfgr &= !0b11;
+        cfgr |= 0b10;
+
+        utils::write_register32(rcc_cfgr, cfgr);
+
+        while ((utils::read_register32(rcc_cfgr) >> 2) & 0b11) != 0b10 {}
+    }
+
+    1
+}
+
+pub fn get_clock_frequency() -> u32
+{
+    unsafe { CLOCK_FREQUENCY }
+}
