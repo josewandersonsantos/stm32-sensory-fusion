@@ -69,7 +69,7 @@ pub fn button_clear_interrupt(pin: u32)
     unsafe
     {
         let exti_pr = mcu::EXTI_PR as *mut u32;
-        utils::write_bits(exti_pr, pin, 0x01);
+        utils::write_bits32(exti_pr, pin, 0x01);
     }
 }
 

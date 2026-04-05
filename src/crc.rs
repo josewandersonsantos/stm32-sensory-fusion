@@ -10,7 +10,7 @@ pub fn reset()
     let crc_cr = mcu::CRC_CR as *mut u32;
     unsafe
     {
-        utils::write_register(crc_cr, 1); // RESET bit
+        utils::write_register32(crc_cr, 1); // RESET bit
     }
 }
 
@@ -22,12 +22,12 @@ pub fn calc(data: &[u32]) -> u32
     {
         unsafe
         {
-            utils::write_register(crc_dr, word);
+            utils::write_register32(crc_dr, word);
         }
     }
 
     unsafe
     {
-        utils::read_register(crc_dr)
+        utils::read_register32(crc_dr)
     }
 }

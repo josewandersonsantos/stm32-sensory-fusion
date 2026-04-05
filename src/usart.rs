@@ -71,14 +71,14 @@ fn enable_it(usart: Usart, interrupt: UsartInterrupt)
 
     unsafe
     {
-        let mut cr1_val = utils::read_register(cr1);
+        let mut cr1_val = utils::read_register32(cr1);
         match interrupt
         {
             UsartInterrupt::TxInterrupt => cr1_val |= 1 << 7, // TXEIE
             UsartInterrupt::RxInterrupt => cr1_val |= 1 << 5, // RXNEIE
             UsartInterrupt::None => {}
         }
-        utils::write_register(cr1, cr1_val);
+        utils::write_register32(cr1, cr1_val);
     }
 }
 
@@ -116,8 +116,8 @@ pub fn start( usart: Usart, mode: UsartMode, use_it:UsartInterrupt, baud_rate: U
     unsafe
     {
         // Zera os registradores antes de configurar
-        utils::write_register(cr1, 0);
-        utils::write_register(cr2, 0);
+        utils::write_register32(cr1, 0);
+        utils::write_register32(cr2, 0);
 
         // Configura word length e parity (CR1)
         let mut cr1_val = match word_length
@@ -148,7 +148,7 @@ pub fn start( usart: Usart, mode: UsartMode, use_it:UsartInterrupt, baud_rate: U
         // Habilita USART (UE = 1)
         cr1_val |= 1 << 13;
 
-        utils::write_register(cr1, cr1_val);
+        utils::write_register32(cr1, cr1_val);
 
         // Configura stop bits (CR2)
         let cr2_val = match stop_bits
@@ -157,11 +157,11 @@ pub fn start( usart: Usart, mode: UsartMode, use_it:UsartInterrupt, baud_rate: U
             UsartStopBits::Stop2Bits => 0b10 << 12,
         };
 
-        utils::write_register(cr2, cr2_val);
+        utils::write_register32(cr2, cr2_val);
 
         // Configura baud rate (BRR)
-        let brr_val = calculate_brr(baud_rate, mcu::CLOCK_FREQUENCY);
-        utils::write_register(brr, brr_val);
+        let brr_val = calculate_brr(baud_rate, mcu::get_clock_frequency());
+        utils::write_register32(brr, brr_val);
     }
 
     enable_it(usart, use_it);
@@ -181,8 +181,8 @@ pub fn write(usart: Usart, data: u8)
 
     unsafe
     {
-        while (utils::read_register(usart_sr) & mcu::USART_SR_TXE) == 0 {}
-        utils::write_register(usart_dr, data as u32);
+        while (utils::read_register32(usart_sr) & mcu::USART_SR_TXE) == 0 {}
+        utils::write_register32(usart_dr, data as u32);
     }
 }
 

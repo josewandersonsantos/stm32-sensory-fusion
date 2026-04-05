@@ -36,9 +36,9 @@ pub fn enable_gpio_clock(port_base: u32)
     let rcc_apb2enr = mcu::RCC_APB2ENR as *mut u32;
     unsafe
     {
-        let current = utils::read_register(rcc_apb2enr);
+        let current = utils::read_register32(rcc_apb2enr);
         let new_value = current | (1 << port_index(port_base));
-        utils::write_register(rcc_apb2enr, new_value);
+        utils::write_register32(rcc_apb2enr, new_value);
     }
 }
 
@@ -99,7 +99,7 @@ pub fn configure_pin(port_base: u32, pin: u32, mode: GpioMode, config: GpioConfi
     let mode_bits = build_mode_bits(mode, config, speed);
     unsafe
     {
-        utils::write_bits(config_reg, shift, mode_bits);
+        utils::write_bits32(config_reg, shift, mode_bits);
     }
 }
 
@@ -108,7 +108,7 @@ pub fn read_pin(port_base: u32, pin: u32) -> bool
     let idr = (port_base + 0x08) as *const u32; // IDR
     unsafe
     {
-        let value = utils::read_register(idr);
+        let value = utils::read_register32(idr);
         (value & (1 << pin)) != 0
     }
 }
@@ -118,7 +118,7 @@ pub fn write_pin(port_base: u32, pin: u32, state: bool)
     let odr = (port_base + 0x0C) as *mut u32; // ODR
     unsafe
     {
-        let current = utils::read_register(odr);
+        let current = utils::read_register32(odr);
         let new_value = if state
         {
             current | (1 << pin)
@@ -127,6 +127,6 @@ pub fn write_pin(port_base: u32, pin: u32, state: bool)
         {
             current & !(1 << pin)
         };
-        utils::write_register(odr, new_value);
+        utils::write_register32(odr, new_value);
     }
 }

@@ -78,9 +78,9 @@ pub fn enable_irq(pin: u32)
     
     unsafe
     {
-        let current = utils::read_register(nvic_iser);
+        let current = utils::read_register32(nvic_iser);
         let new_value = current | (1 << bit_pos);
-        utils::write_register(nvic_iser, new_value);
+        utils::write_register32(nvic_iser, new_value);
     }
 }
 
@@ -92,8 +92,8 @@ pub fn disable_irq(pin: u32)
     
     unsafe
     {
-        let current = utils::read_register(nvic_icer);
+        let current = utils::read_register32(nvic_icer);
         let new_value = current & !(1 << bit_pos);
-        utils::write_register(nvic_icer, new_value);
+        utils::write_register32(nvic_icer, new_value);
     }
 }

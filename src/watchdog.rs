@@ -26,16 +26,16 @@ pub mod iwdg
 
         unsafe
         {
-            utils::write_register(iwdg_kr, KEY_WRITE);
+            utils::write_register32(iwdg_kr, KEY_WRITE);
 
             // prescaler = 32
-            utils::write_register(iwdg_pr, 0x03);
+            utils::write_register32(iwdg_pr, 0x03);
 
             let reload = (timeout_ms * 1250) / 1000;
-            utils::write_register(iwdg_rlr, reload);
+            utils::write_register32(iwdg_rlr, reload);
 
-            utils::write_register(iwdg_kr, KEY_REFRESH);
-            utils::write_register(iwdg_kr, KEY_ENABLE);
+            utils::write_register32(iwdg_kr, KEY_REFRESH);
+            utils::write_register32(iwdg_kr, KEY_ENABLE);
         }
     }
    
@@ -48,7 +48,7 @@ pub mod iwdg
         
         unsafe
         {
-            utils::write_register(iwdg_kr, KEY_REFRESH);
+            utils::write_register32(iwdg_kr, KEY_REFRESH);
         }
     }
 }
@@ -70,9 +70,9 @@ pub mod wwdg
             // Enable clock WWDG
             rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Wwdg);
             // Config window + prescaler
-            utils::write_register(wwdg_cfr, (0b111 << 7) | (0b011 << 0)); 
+            utils::write_register32(wwdg_cfr, (0b111 << 7) | (0b011 << 0)); 
             // Start + counter
-            utils::write_register(wwdg_cr, 0x7F | (1 << 7));
+            utils::write_register32(wwdg_cr, 0x7F | (1 << 7));
         }
     }
 
@@ -81,13 +81,13 @@ pub mod wwdg
         let wwdg_cr = mcu::WWDG_CR as *mut u32;
         unsafe
         {
-            utils::write_register(wwdg_cr, 0x7F);
+            utils::write_register32(wwdg_cr, 0x7F);
         }
     }
 
     pub fn disable()
     {
         let rcc_apb1enr = mcu::RCC_APB1ENR as *mut u32;
-        utils::clear_bit(rcc_apb1enr, 11);
+        utils::clear_bit32(rcc_apb1enr, 11);
     }
 }
