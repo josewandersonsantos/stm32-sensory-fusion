@@ -63,14 +63,22 @@ pub mod apb1
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_APB1ENR as *mut u32;
-        utils::set_bit(reg, bit);
+        utils::set_bit32(reg, bit);
     }
 
     pub fn disable(peripheral: Apb1Peripheral)
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_APB1ENR as *mut u32;
-        utils::clear_bit(reg, bit);
+        utils::clear_bit32(reg, bit);
+    }
+
+    pub fn reset(peripheral: Apb1Peripheral)
+    {
+        let bit = bit_of(peripheral);
+        let reg = mcu::RCC_APB1RSTR as *mut u32;
+        utils::set_bit32(reg, bit);
+        utils::clear_bit32(reg, bit);
     }
 }
 
@@ -123,14 +131,22 @@ pub mod apb2
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_APB2ENR as *mut u32;
-        utils::set_bit(reg, bit);
+        utils::set_bit32(reg, bit);
     }
 
     pub fn disable(peripheral: Apb2Peripheral)
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_APB2ENR as *mut u32;
-        utils::clear_bit(reg, bit);
+        utils::clear_bit32(reg, bit);
+    }
+    
+    pub fn reset(peripheral: Apb2Peripheral)
+    {
+        let bit = bit_of(peripheral);
+        let reg = mcu::RCC_APB2RSTR as *mut u32;
+        utils::set_bit32(reg, bit);
+        utils::clear_bit32(reg, bit);
     }
 }
 
@@ -168,20 +184,28 @@ pub mod ahb
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_AHBENR as *mut u32;
-        utils::set_bit(reg, bit);
+        utils::set_bit32(reg, bit);
     }
 
     pub fn disable(peripheral: AHBPeripheral)
     {
         let bit = bit_of(peripheral);
         let reg = mcu::RCC_AHBENR as *mut u32;
-        utils::clear_bit(reg, bit);
+        utils::clear_bit32(reg, bit);
+    }
+
+    pub fn reset(peripheral: AHBPeripheral)
+    {
+        let bit = bit_of(peripheral);
+        let reg = mcu::RCC_AHBRSTR as *mut u32;
+        utils::set_bit32(reg, bit);
+        utils::clear_bit32(reg, bit);
     }
 }
 
 pub fn get_pclk1_frequency() -> u32 
 {
-    let cfgr = unsafe { utils::read_register(mcu::RCC_CFGR as *mut u32) };
+    let cfgr = unsafe { utils::read_register32(mcu::RCC_CFGR as *mut u32) };
 
     // Get SYSCLK
     let sysclk = match (cfgr >> 2) & 0b11 
