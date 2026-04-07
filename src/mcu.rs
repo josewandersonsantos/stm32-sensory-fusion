@@ -353,7 +353,7 @@ pub enum SysClock
     HSE72MHz = 72_000_000,
 }
 
-pub fn init_clock(sys_clk: SysClock, use_usb: bool) -> u8
+pub fn init_clock(sys_clk: SysClock) -> u8
 {
     let hse: u32 = 8_000_000;
     let sysclk = match sys_clk
@@ -381,22 +381,6 @@ pub fn init_clock(sys_clk: SysClock, use_usb: bool) -> u8
     if sysclk != hse * pll_mul
     {
         // return Err("Frequency not multiple of HSE");
-        return 0;
-    }
-
-    // =========================
-    // 2. USB check
-    // =========================
-    let usb_ok = match sysclk
-    {
-        72_000_000 => true,
-        48_000_000 => true,
-        _ => false,
-    };
-
-    if use_usb && !usb_ok
-    {
-        // return Err("Frequency not compatible with USB");
         return 0;
     }
 
@@ -462,7 +446,6 @@ pub fn init_clock(sys_clk: SysClock, use_usb: bool) -> u8
         cfgr &= !(0b1111 << 18);
         cfgr |= ((pll_mul - 2) << 18);
 
-        // USB prescaler
         if sysclk == 72_000_000
         {
             cfgr &= !(1 << 22); // /1.5
