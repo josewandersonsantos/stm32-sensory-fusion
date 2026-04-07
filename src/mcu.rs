@@ -476,6 +476,24 @@ pub fn init_clock(sys_clk: SysClock) -> u8
         while ((utils::read_register32(rcc_cfgr) >> 2) & 0b11) != 0b10 {}
     }
 
+    unsafe
+    {
+        let rcc_cfgr = RCC_CFGR as *mut u32;
+        let sws = (utils::read_register32(rcc_cfgr) >> 2) & 0b11;
+        
+        // MCO = PLL / 2
+        let rcc_cfgr = RCC_CFGR as *mut u32;
+        let mut cfgr = utils::read_register32(rcc_cfgr);
+
+        // limpa MCO bits [26:24]
+        cfgr &= !(0b110 << 24);
+
+        // seleciona PLL/2 → 111
+        cfgr |= (0b110 << 24);
+
+        utils::write_register32(rcc_cfgr, cfgr);
+    }
+
     1
 }
 
