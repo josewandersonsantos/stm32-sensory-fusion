@@ -70,10 +70,10 @@ pub fn from_pin(pin: u32) -> Option<u32>
     }
 }
 
-pub fn enable_irq(pin: u32)
+pub fn enable_irq(irqn: u32)
 {
-    let reg_offset = (pin / 32) * 4;
-    let bit_pos = pin % 32;
+    let reg_offset = (irqn / 32) * 4;
+    let bit_pos = irqn % 32;
     let nvic_iser = (NVIC_ISER + reg_offset) as *mut u32;
     
     unsafe
@@ -84,10 +84,10 @@ pub fn enable_irq(pin: u32)
     }
 }
 
-pub fn disable_irq(pin: u32)
+pub fn disable_irq(irqn: u32)
 {
-    let reg_offset = (pin / 32) * 4;
-    let bit_pos = pin % 32;
+    let reg_offset = (irqn / 32) * 4;
+    let bit_pos = irqn % 32;
     let nvic_icer = (NVIC_ICER + reg_offset) as *mut u32;
     
     unsafe
@@ -95,5 +95,21 @@ pub fn disable_irq(pin: u32)
         let current = utils::read_register32(nvic_icer);
         let new_value = current & !(1 << bit_pos);
         utils::write_register32(nvic_icer, new_value);
+    }
+}
+
+pub fn set_irq_priority(irqn: u32, priority: u8)
+{
+    let reg_offset = irqn / 4;
+    let byte_offset = (irqn % 4) * 8;        // each IRQ get 8 bits on IPR
+
+    let nvic_ipr = (NVIC_IPR + reg_offset * 4) as *mut u32;
+
+    unsafe
+    {
+        let mut val = utils::read_register32(nvic_ipr);
+        val &= !(0xFF << byte_offset);                    // clean 8 bits
+        val |= (priority as u32) << byte_offset;          // STM32F1 just use 4 higher bits
+        utils::write_register32(nvic_ipr, val);
     }
 }
