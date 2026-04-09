@@ -16,64 +16,99 @@ enum Ep0State
     StatusOut,  // Status stage (OUT)
 }
 
-/// Global state for Endpoint 0 (Control Endpoint)
-static mut EP0_STATE: Ep0State = Ep0State::Idle;
-static mut EP0_DATA: [u8; 64] = [0; 64];   // Buffer for EP0 data stage
-static mut EP0_LEN: usize = 0;              // Total length to transfer
-static mut EP0_POS: usize = 0;              // Current position in the buffer
-
-/// Standard USB Device Descriptor (minimal, for testing)
-const DEVICE_DESCRIPTOR: [u8; 18] =
-[
-    18,           // bLength
-    1,            // bDescriptorType = DEVICE
-    0x00, 0x02,   // bcdUSB = 2.00
-    0x00,         // bDeviceClass
-    0x00,         // bDeviceSubClass
-    0x00,         // bDeviceProtocol
-    64,           // bMaxPacketSize0 = 64 bytes
-    0x34, 0x12,   // idVendor  (0x1234)
-    0x78, 0x56,   // idProduct (0x5678)
-    0x00, 0x01,   // bcdDevice
-    1,            // iManufacturer
-    2,            // iProduct
-    3,            // iSerialNumber
-    1             // bNumConfigurations
-];
-
-/// Configures Endpoint 0 (Control Endpoint) buffers and registers
-pub fn configure_ep0(usb_types: &usb_types::Endpoints)
+struct Endpoint
 {
-    unsafe
+    number: usb_types::Endpoints,
+    ep_type: usb_types::EndpointType,
+    descriptor: [u8; 18], 
+
+    state: Ep0State,
+    data_buffer: [u8; 64], // Buffer for data to send/receive
+    length: usize,         // Total length of data to transfer
+    position: usize,       // Current position in the data buffer
+    tx_buffer_addr: u16,   // PMA address for TX buffer
+    rx_buffer_addr: u16,   // PMA address for RX buffer
+    tx_count: u16,         // Number of bytes to send in the next IN transaction
+    rx_count: u16,         // Number of bytes received in the last OUT transaction
+}
+
+// Global state for Endpoint 0 (Control Endpoint)
+static mut EP0_HANDLER: Endpoint = Endpoint
+{
+    number: usb_types::Endpoints::EP0,
+    ep_type: usb_types::EndpointType::Control,
+    descriptor: 
+    [
+        18,           // bLength
+        1,            // bDescriptorType = DEVICE
+        0x00, 0x02,   // bcdUSB = 2.00
+        0x00,         // bDeviceClass
+        0x00,         // bDeviceSubClass
+        0x00,         // bDeviceProtocol
+        64,           // bMaxPacketSize0 = 64 bytes
+        0x34, 0x12,   // idVendor  (0x1234)
+        0x78, 0x56,   // idProduct (0x5678)
+        0x00, 0x01,   // bcdDevice
+        1,            // iManufacturer
+        2,            // iProduct
+        3,            // iSerialNumber
+        1             // bNumConfigurations
+    ],        
+    state: Ep0State::Idle,
+    data_buffer: [0; 64],
+    length: 0,
+    position: 0,
+    tx_buffer_addr: 0x40,   // PMA address for EP0 TX buffer
+    rx_buffer_addr: 0x80,   // PMA address for EP0 RX buffer
+    tx_count: 0,
+    rx_count: 0,
+};
+
+pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
+{
+    match epn
     {
-        // === Buffer Description Table (BTABLE) entries for EP0 ===
-        // BTABLE está em 0x0000 da PMA
+        // Configures Endpoint 0 (Control Endpoint) buffers and registers
+        usb_types::Endpoints::EP0 =>
+        {
+            // Clear EP0R register
+            let ep0r = mcu::USB_EP0R as *mut u16;
+            unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
+            
+            // === Buffer Description Table (BTABLE) entries for EP0 ===
+            unsafe
+            {
+                // BTABLE are in 0x0000 from PMA
+                // TX Buffer (IN direction) - endereço recomendado: 0x40
+                utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_TX as u32) as *mut u16, EP0_HANDLER.tx_buffer_addr);   // ADDR_TX = 0x40
+                utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::COUNT_TX as u32) as *mut u16, EP0_HANDLER.tx_count);   // COUNT_TX = 0
 
-        // TX Buffer (IN direction) - endereço recomendado: 0x40
-        utils::write_register16((usb_types::PMA_BASE + 0x00) as *mut u16, 0x40);   // ADDR_TX = 0x40
-        utils::write_register16((usb_types::PMA_BASE + 0x02) as *mut u16, 0x00);   // COUNT_TX = 0
+                // RX Buffer (OUT/SETUP direction) - endereço recomendado: 0x80 (64 bytes após TX)
+                utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_RX as u32) as *mut u16, EP0_HANDLER.rx_buffer_addr);   // ADDR_RX = 0x80
+                utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::COUNT_RX as u32) as *mut u16, EP0_HANDLER.rx_count); // COUNT_RX = 64 bytes (BL_SIZE=1, NUM_BLOCK=2)
+            }
 
-        // RX Buffer (OUT/SETUP direction) - endereço recomendado: 0x80 (64 bytes após TX)
-        utils::write_register16((usb_types::PMA_BASE + 0x04) as *mut u16, 0x80);   // ADDR_RX = 0x80
-        utils::write_register16((usb_types::PMA_BASE + 0x06) as *mut u16, 0x8400); // COUNT_RX = 64 bytes (BL_SIZE=1, NUM_BLOCK=2)
+            // === Configure EP0R Register ===
+            let ep0r = mcu::USB_EP0R as *mut u16;
+            let daddr = mcu::USB_DADDR as *mut u16;
+            unsafe
+            {
+                let mut val: u16 = 0;
+
+                // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0
+                // Bits [8:9]  = EP_TYPE  → 01 = Control
+                val |= (ep_type as u16) << (usb_types::USBEPnR::EA as u8);
+                core::ptr::write_volatile(ep0r, val);
+                core::ptr::write_volatile(daddr, 0x0000);
+            }
+
+            set_stat_tx_nak(epn);
+            set_stat_rx_valid(epn);
+        }
+        _ => return
+
     }
-
-    // === Configure EP0R Register ===
-    let ep0r = mcu::USB_EP0R as *mut u16;
-    let daddr = mcu::USB_DADDR as *mut u16;
-    unsafe
-    {
-        let mut val: u16 = 0;
-
-        // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0
-        // Bits [8:9]  = EP_TYPE  → 01 = Control
-        val |= (usb_types::EndpointType::Control as u16) << (usb_types::USBEPnR::EA as u8);
-        core::ptr::write_volatile(ep0r, val);
-        core::ptr::write_volatile(daddr, 0x0000);
-    }
-
-    set_stat_tx_nak();
-    set_stat_rx_valid();
+    
 }
 
 /// USB Low Priority Interrupt Handler
@@ -83,6 +118,8 @@ pub fn handler_endpoint_interrupt()
     {
         let usb_istr = mcu::USB_ISTR as *mut u16;
         let mut istr = utils::read_register16(usb_istr);
+        // Extract endpoint number
+        let ep_id = istr & 0x0F;
 
         // ESOF
         if istr & (1 << usb_types::USBISTR::ESOF as u16) != 0
@@ -98,14 +135,18 @@ pub fn handler_endpoint_interrupt()
 
         // RESET
         if istr & (1 << usb_types::USBISTR::RESET as u16) != 0
-        {
-            // Extract endpoint number
-            let ep_id = istr & 0x0F;
-            
+        {       
             match ep_id
             {
-                // Reset EP0
-                0 => ep0_handler(),
+                // Reset endpoint
+                0 => handler_endpoint(usb_types::Endpoints::EP0),
+                // 1 => handler_endpoint(usb_types::Endpoints::EP1),
+                // 2 => handler_endpoint(usb_types::Endpoints::EP2),
+                // 3 => handler_endpoint(usb_types::Endpoints::EP3),
+                // 4 => handler_endpoint(usb_types::Endpoints::EP4),
+                // 5 => handler_endpoint(usb_types::Endpoints::EP5),
+                // 6 => handler_endpoint(usb_types::Endpoints::EP6),
+                // 7 => handler_endpoint(usb_types::Endpoints::EP7),
                 _ => {}
             }
 
@@ -142,12 +183,16 @@ pub fn handler_endpoint_interrupt()
         // Correct Transfer (CTR) interrupt
         if istr & (1 << usb_types::USBISTR::CTR as u16) != 0
         {
-            // Extract endpoint number
-            let ep_id = istr & 0x0F;
-
             match ep_id
             {
-                0 => ep0_handler(),
+                0 => handler_endpoint(usb_types::Endpoints::EP0),
+                1 => handler_endpoint(usb_types::Endpoints::EP1),
+                2 => handler_endpoint(usb_types::Endpoints::EP2),
+                3 => handler_endpoint(usb_types::Endpoints::EP3),
+                4 => handler_endpoint(usb_types::Endpoints::EP4),
+                5 => handler_endpoint(usb_types::Endpoints::EP5),
+                6 => handler_endpoint(usb_types::Endpoints::EP6),
+                7 => handler_endpoint(usb_types::Endpoints::EP7),
                 _ => {}
             }
         }
@@ -215,23 +260,17 @@ fn pma_write(addr: u16, data: &[u8])
 }
 
 /// Sends the next chunk of data during a Data IN stage
-fn send_next_packet()
+fn send_next_packet(addr_tx: u16, len: usize, pos: &mut usize, data: &[u8])
 {
-    let addr_tx = 0x40;     // TX buffer address in PMA (defined in configure_ep0)
-
-    let chunk = unsafe
+    let chunk =
     {
-        let remaining = EP0_LEN - EP0_POS;
+        let remaining = len - *pos;
         remaining.min(64)
     };
     
-    unsafe
-    {
-        // Copy data to PMA
-        pma_write(addr_tx, &EP0_DATA[EP0_POS..EP0_POS + chunk]);
-
-        EP0_POS += chunk;
-    }
+    // Copy data to PMA
+    pma_write(addr_tx, &data[*pos..*pos + chunk]);
+    *pos += chunk;
 
     // Update TX count and set TX status to VALID
     write_count_tx(chunk as u16);
@@ -269,111 +308,181 @@ fn clear_ctr_tx(ep: *mut u16)
 }
 
 /// Handles GET_DESCRIPTOR request
-fn handle_get_descriptor(setup: &[u8])
+fn handle_get_descriptor(epn: usb_types::Endpoints, setup: &[u8])
 {
-    let desc_type = setup[3];
+    let ep_struct = match epn
+    {
+        usb_types::Endpoints::EP0 => unsafe {&mut EP0_HANDLER},
+        // usb_types::Endpoints::EP1 => unsafe {&mut EP1_HANDLER},
+        // usb_types::Endpoints::EP2 => unsafe {&mut EP2_HANDLER},
+        // usb_types::Endpoints::EP3 => unsafe {&mut EP3_HANDLER},
+        // usb_types::Endpoints::EP4 => unsafe {&mut EP4_HANDLER},
+        // usb_types::Endpoints::EP5 => unsafe {&mut EP5_HANDLER},
+        // usb_types::Endpoints::EP6 => unsafe {&mut EP6_HANDLER},
+        // usb_types::Endpoints::EP7 => unsafe {&mut EP7_HANDLER},
+        _ => return
+    };
 
+    let desc_type = setup[3];
     let data = match desc_type
     {
-        1 => &DEVICE_DESCRIPTOR,        // Device Descriptor
+        // Device Descriptor
+        1 => 
+        {
+            &ep_struct.descriptor
+        }
         _ =>
         {
-            stall_ep0();
+            stall_ep(epn);
             return;
         }
     };
 
-    unsafe
-    {
-        // Limit response size to what the host requested
-        EP0_LEN = core::cmp::min(setup[6] as usize, data.len());
-        EP0_POS = 0;
+    // Limit response size to what the host requested
+    ep_struct.length   = core::cmp::min(setup[6] as usize, data.len());
+    ep_struct.position = 0;
+    ep_struct.data_buffer[..ep_struct.length].copy_from_slice(&data[..ep_struct.length]);
+    ep_struct.state = Ep0State::DataIn;
+    
+    send_next_packet(ep_struct.tx_buffer_addr, ep_struct.length, &mut ep_struct.position, &ep_struct.data_buffer);
 
-        EP0_DATA[..EP0_LEN].copy_from_slice(&data[..EP0_LEN]);
-
-        EP0_STATE = Ep0State::DataIn;
-    }
-
-    send_next_packet();
 }
 
 /// Handles SETUP packets (Standard Device Requests)
-fn handle_setup()
+fn handle_setup(epn: usb_types::Endpoints)
 {
+    let ep = match epn
+    {
+        usb_types::Endpoints::EP0 => mcu::USB_EP0R as *mut u16,
+        usb_types::Endpoints::EP1 => mcu::USB_EP1R as *mut u16,
+        usb_types::Endpoints::EP2 => mcu::USB_EP2R as *mut u16,
+        usb_types::Endpoints::EP3 => mcu::USB_EP3R as *mut u16,
+        usb_types::Endpoints::EP4 => mcu::USB_EP4R as *mut u16,
+        usb_types::Endpoints::EP5 => mcu::USB_EP5R as *mut u16,
+        usb_types::Endpoints::EP6 => mcu::USB_EP6R as *mut u16,
+        usb_types::Endpoints::EP7 => mcu::USB_EP7R as *mut u16,
+        _ => return
+    };
+
+    let ep_struct = match epn
+    {
+        usb_types::Endpoints::EP0 => unsafe { &mut EP0_HANDLER },
+        // usb_types::Endpoints::EP1 => unsafe { &mut EP1_HANDLER },
+        // usb_types::Endpoints::EP2 => unsafe { &mut EP2_HANDLER },
+        // usb_types::Endpoints::EP3 => unsafe { &mut EP3_HANDLER },
+        // usb_types::Endpoints::EP4 => unsafe { &mut EP4_HANDLER },
+        // usb_types::Endpoints::EP5 => unsafe { &mut EP5_HANDLER },
+        // usb_types::Endpoints::EP6 => unsafe { &mut EP6_HANDLER },
+        // usb_types::Endpoints::EP7 => unsafe { &mut EP7_HANDLER }
+        _ => return
+    };
+
     let mut setup = [0u8; 8];
 
     // Read 8-byte SETUP packet from PMA
-    pma_read(0x80, &mut setup);     // RX buffer starts at 0x80
+    pma_read(ep_struct.rx_buffer_addr, &mut setup);
+    ep_struct.state = Ep0State::Setup;
 
-    unsafe
-    {
-        EP0_STATE = Ep0State::Setup;
-    }
-
-    let request = setup[1];     // bRequest
+    // bRequest
+    let request = setup[1];
 
     match request
     {
+        // GET_DESCRIPTOR
         6 => 
         {
-            handle_get_descriptor(&setup)     // GET_DESCRIPTOR
+            handle_get_descriptor(epn,  &setup)
         },
-        _ => stall_ep0(),                       // Unsupported request → STALL
+        // Unsupported request → STALL
+        _ => stall_ep(epn)
     }
 }
+
 /// Called when an IN transaction completes
-fn handle_in()
+fn handle_in(epn: usb_types::Endpoints)
 {
-    unsafe
+    let ep_struct = match epn
     {
-        match EP0_STATE
+        usb_types::Endpoints::EP0 => unsafe { &mut EP0_HANDLER },
+        // usb_types::Endpoints::EP1 => unsafe { &mut EP1_HANDLER },
+        // usb_types::Endpoints::EP2 => unsafe { &mut EP2_HANDLER },
+        // usb_types::Endpoints::EP3 => unsafe { &mut EP3_HANDLER },
+        // usb_types::Endpoints::EP4 => unsafe { &mut EP4_HANDLER },
+        // usb_types::Endpoints::EP5 => unsafe { &mut EP5_HANDLER },
+        // usb_types::Endpoints::EP6 => unsafe { &mut EP6_HANDLER },
+        // usb_types::Endpoints::EP7 => unsafe { &mut EP7_HANDLER }
+        _ => return
+    };
+
+    match ep_struct.state
+    {
+        Ep0State::DataIn =>
         {
-            Ep0State::DataIn =>
+            if ep_struct.position < ep_struct.length
             {
-                if EP0_POS < EP0_LEN
-                {
-                    // More data to send
-                    send_next_packet();
-                } 
-                else
-                {
-                    // Data stage finished → go to Status OUT stage
-                    EP0_STATE = Ep0State::StatusOut;
-                    set_stat_rx_valid();
-                }
-            }
-            Ep0State::StatusIn =>
+                // More data to send
+                send_next_packet(ep_struct.tx_buffer_addr, ep_struct.length, &mut ep_struct.position, &ep_struct.data_buffer);
+            } 
+            else
             {
-                // Status stage completed
-                EP0_STATE = Ep0State::Idle;
+                // Data stage finished → go to Status OUT stage
+                ep_struct.state = Ep0State::StatusOut;
+                set_stat_rx_valid(epn);
             }
-            _ => {}
         }
+        Ep0State::StatusIn =>
+        {
+            // Status stage completed
+            ep_struct.state = Ep0State::Idle;
+        }
+        _ => {}
     }
 }
 
 /// Called when an OUT transaction completes
-fn handle_out()
+fn handle_out(epn: usb_types::Endpoints)
 {
-    unsafe
+    let ep_struct = match epn
     {
-        match EP0_STATE
+        usb_types::Endpoints::EP0 => unsafe { &mut EP0_HANDLER },
+        // usb_types::Endpoints::EP1 => unsafe { &mut EP1_HANDLER },
+        // usb_types::Endpoints::EP2 => unsafe { &mut EP2_HANDLER },
+        // usb_types::Endpoints::EP3 => unsafe { &mut EP3_HANDLER },
+        // usb_types::Endpoints::EP4 => unsafe { &mut EP4_HANDLER },
+        // usb_types::Endpoints::EP5 => unsafe { &mut EP5_HANDLER },
+        // usb_types::Endpoints::EP6 => unsafe { &mut EP6_HANDLER },
+        // usb_types::Endpoints::EP7 => unsafe { &mut EP7_HANDLER }
+        _ => return
+    };
+
+    match ep_struct.state
+    {
+        Ep0State::StatusOut =>
         {
-            Ep0State::StatusOut =>
-            {
-                // Status stage completed
-                EP0_STATE = Ep0State::Idle;
-            }
-            _ => {}
+            // Status stage completed
+            ep_struct.state = Ep0State::Idle;
         }
+        _ => {}
     }
 }
 
 /// Main handler for Endpoint 0 (Control Endpoint)
-pub fn ep0_handler()
+pub fn handler_endpoint(epn: usb_types::Endpoints)
 {
-    let ep0r = mcu::USB_EP0R as *mut u16;
-    let ep = unsafe { core::ptr::read_volatile(ep0r) };
+    let epr = match epn
+    {
+        usb_types::Endpoints::EP0 => mcu::USB_EP0R as *mut u16,
+        usb_types::Endpoints::EP1 => mcu::USB_EP1R as *mut u16,
+        usb_types::Endpoints::EP2 => mcu::USB_EP2R as *mut u16,
+        usb_types::Endpoints::EP3 => mcu::USB_EP3R as *mut u16,
+        usb_types::Endpoints::EP4 => mcu::USB_EP4R as *mut u16,
+        usb_types::Endpoints::EP5 => mcu::USB_EP5R as *mut u16,
+        usb_types::Endpoints::EP6 => mcu::USB_EP6R as *mut u16,
+        usb_types::Endpoints::EP7 => mcu::USB_EP7R as *mut u16,
+        _ => return
+    };
+
+    let ep = unsafe { core::ptr::read_volatile(epr) };
 
     // ========================
     // RX Side (SETUP or OUT packet received)
@@ -382,15 +491,15 @@ pub fn ep0_handler()
     {
         if ep & (1 << usb_types::USBEPnR::SETUP as u16) != 0 // SETUP bit set
         {
-            handle_setup();
+            handle_setup(epn);
         }
         else
         {
             // Regular OUT data packet
-            handle_out();
+            handle_out(epn);
         }
 
-        clear_ctr_rx(ep0r);
+        clear_ctr_rx(epr);
     }
 
     // ========================
@@ -398,15 +507,27 @@ pub fn ep0_handler()
     // ========================
     if ep & (1 << usb_types::USBEPnR::CTR_TX as u16) != 0
     {
-        handle_in();
-        clear_ctr_tx(ep0r);
+        handle_in(epn);
+        clear_ctr_tx(epr);
     }
 }
 
 /// Stalls both directions of Endpoint 0 (used for unsupported requests)
-fn stall_ep0()
+fn stall_ep(epn: usb_types::Endpoints)
 {
-    let ep = mcu::USB_EP0R as *mut u16;
+    let ep = match epn
+    {
+        usb_types::Endpoints::EP0 => mcu::USB_EP0R as *mut u16,
+        usb_types::Endpoints::EP1 => mcu::USB_EP1R as *mut u16,
+        usb_types::Endpoints::EP2 => mcu::USB_EP2R as *mut u16,
+        usb_types::Endpoints::EP3 => mcu::USB_EP3R as *mut u16,
+        usb_types::Endpoints::EP4 => mcu::USB_EP4R as *mut u16,
+        usb_types::Endpoints::EP5 => mcu::USB_EP5R as *mut u16,
+        usb_types::Endpoints::EP6 => mcu::USB_EP6R as *mut u16,
+        usb_types::Endpoints::EP7 => mcu::USB_EP7R as *mut u16,
+        _ => return
+    };
+
     unsafe
     {
         let mut val = core::ptr::read_volatile(ep);
@@ -417,9 +538,21 @@ fn stall_ep0()
 }
 
 /// Sets STAT_RX to VALID (toggles the bits)
-fn set_stat_rx_valid()
+fn set_stat_rx_valid(epn: usb_types::Endpoints)
 {
-    let ep = mcu::USB_EP0R as *mut u16;
+    let ep = match epn
+    {
+        usb_types::Endpoints::EP0 => mcu::USB_EP0R as *mut u16,
+        usb_types::Endpoints::EP1 => mcu::USB_EP1R as *mut u16,
+        usb_types::Endpoints::EP2 => mcu::USB_EP2R as *mut u16,
+        usb_types::Endpoints::EP3 => mcu::USB_EP3R as *mut u16,
+        usb_types::Endpoints::EP4 => mcu::USB_EP4R as *mut u16,
+        usb_types::Endpoints::EP5 => mcu::USB_EP5R as *mut u16,
+        usb_types::Endpoints::EP6 => mcu::USB_EP6R as *mut u16,
+        usb_types::Endpoints::EP7 => mcu::USB_EP7R as *mut u16,
+        _ => return
+    };
+
     unsafe
     {
         let mut val = core::ptr::read_volatile(ep);
@@ -428,9 +561,20 @@ fn set_stat_rx_valid()
     }
 }
 
-fn set_stat_tx_nak()
+fn set_stat_tx_nak(epn: usb_types::Endpoints)
 {
-    let ep = mcu::USB_EP0R as *mut u16;
+    let ep = match epn
+    {
+        usb_types::Endpoints::EP0 => mcu::USB_EP0R as *mut u16,
+        usb_types::Endpoints::EP1 => mcu::USB_EP1R as *mut u16,
+        usb_types::Endpoints::EP2 => mcu::USB_EP2R as *mut u16,
+        usb_types::Endpoints::EP3 => mcu::USB_EP3R as *mut u16,
+        usb_types::Endpoints::EP4 => mcu::USB_EP4R as *mut u16,
+        usb_types::Endpoints::EP5 => mcu::USB_EP5R as *mut u16,
+        usb_types::Endpoints::EP6 => mcu::USB_EP6R as *mut u16,
+        usb_types::Endpoints::EP7 => mcu::USB_EP7R as *mut u16,
+        _ => return
+    };
 
     unsafe
     {
