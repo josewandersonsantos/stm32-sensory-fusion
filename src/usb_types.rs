@@ -98,6 +98,7 @@ pub enum BTABLE_ADDRESS
     COUNT_RX = 0x06,  // Number of bytes received (for OUT endpoints)
 }
 
+#[derive(Clone, Copy)]
 pub enum EndpointType
 {
     Bulk        = 0,
