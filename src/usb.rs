@@ -5,6 +5,7 @@ use crate::irq;
 use crate::utils;
 use crate::rcc;
 use crate::mcu;
+use crate::gpio;
 use crate::usb_types;
 use crate::usb_endpoint;
 
@@ -28,14 +29,13 @@ fn enable_btable()
 
 pub fn reconnect()
 {
-    let usb_bcdr = mcu::USB_BCDR as *mut u16;
-    // Disconnect by clearing DPPU
-    utils::clear_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 0
-
+    // Disconnect (Set PA15 low to power USB pull-down)
+    gpio::clear_pin(mcu::GPIOB_BASE, mcu::GPIO15);
+    
     // Small delay to ensure host detects disconnection
-    utils::delay_ms(600);
-    // Reconnect by setting DPPU
-    utils::set_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 1
+    utils::delay_ms(500);
+    // Connect (Set PA15 high to power USB pull-up)
+    gpio::set_pin(mcu::GPIOB_BASE, mcu::GPIO15);
 }
 
 /// Initializes the USB peripheral on STM32F103 (BluePill)
@@ -46,10 +46,10 @@ pub fn init()
     // Reset USB peripheral
     rcc::apb1::reset(rcc::apb1::Apb1Peripheral::Usb);
 
-    // Discconnect to USB host by disabling internal pull-up on D+
-    let usb_bcdr = mcu::USB_BCDR as *mut u16;
-    utils::clear_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 0
-
+    // Disconnect to USB host by setting high on PA15
+    gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO15, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
+    gpio::clear_pin(mcu::GPIOB_BASE, mcu::GPIO15);
+    
     // Clear Power Down
     let usb_cntr = mcu::USB_CNTR as *mut u16;
     utils::clear_bit16(usb_cntr, usb_types::USBCNTR::PDWN as u8); // PDWN = 0
@@ -71,12 +71,6 @@ pub fn init()
 
     // Setup Endpoint 0
     usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
-    // // Setup Endpoint 1
-    // usb_endpoint::configure_ep(usb_types::Endpoints::EP1, usb_types::EndpointType::Control);
-    // // Setup Endpoint 2
-    // usb_endpoint::configure_ep(usb_types::Endpoints::EP2, usb_types::EndpointType::Control);
-
-    //unsafe {utils::write_register16(usb_cntr, 0xFFFF);} // ALL
     // Enable Correct Transfer interrupt
     utils::set_bit16(usb_cntr, usb_types::USBCNTR::CTRM as u8); // CTRM
     // Enable Reset interrupt
@@ -87,12 +81,10 @@ pub fn init()
     irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 6);
 
     // utils::delay_ms(50);
-
-    // Connect to USB host by enabling internal pull-up on D+
-    let usb_bcdr = mcu::USB_BCDR as *mut u16;
-    utils::set_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 1
+    // Connect (Set PA15 high to power USB pull-up)
+    gpio::set_pin(mcu::GPIOB_BASE, mcu::GPIO15);
     
-    reconnect();
+    //reconnect();
 
 }
 
