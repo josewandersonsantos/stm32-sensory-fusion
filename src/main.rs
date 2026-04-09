@@ -170,8 +170,12 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO08, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
 
     // USB
+    // PA11 (D-)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
-    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::Input, gpio::GpioConfig::Floating, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    // PA12 (D+)
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    // PA15 (USB Pull-up)
+    gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO15, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
     usb::init();
 
     loop
@@ -186,7 +190,7 @@ fn main() -> !
             // {
             //     usb::handle_usb_interrupt();
             // }
-            led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
+            // led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
             utils::delay_ms(100);
         }
     }
