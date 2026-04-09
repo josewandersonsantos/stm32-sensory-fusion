@@ -185,12 +185,8 @@ fn main() -> !
             let istr = utils::read_register16(mcu::USB_ISTR as *const u16);
             let ep0 = utils::read_register16(mcu::USB_EP0R as *const u16);
             let cfgr = utils::read_register32(mcu::RCC_CFGR as *const u32);
-            // let usbpre = (cfgr >> 22) & 1;
-            // if (istr & (1<<10)) != 0
-            // {
-            //     usb::handle_usb_interrupt();
-            // }
-            // led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
+            
+            led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
             utils::delay_ms(100);
         }
     }

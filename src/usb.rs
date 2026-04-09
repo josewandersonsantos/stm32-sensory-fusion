@@ -47,7 +47,6 @@ pub fn init()
     rcc::apb1::reset(rcc::apb1::Apb1Peripheral::Usb);
 
     // Disconnect to USB host by setting high on PA15
-    gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO15, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
     gpio::clear_pin(mcu::GPIOB_BASE, mcu::GPIO15);
     
     // Clear Power Down
