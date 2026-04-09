@@ -21,10 +21,6 @@ fn enable_btable()
     // Set BTABLE address to 0x0000 (start of PMA)
     let usb_btable = mcu::USB_BTABLE as *mut u16;
     unsafe { core::ptr::write_volatile(usb_btable, 0x0000); }
-
-    // Clear EP0R register
-    let ep0r = mcu::USB_EP0R as *mut u16;
-    unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
 }
 
 pub fn reconnect()
@@ -44,7 +40,6 @@ pub fn init()
 {
     // Enable USB clock
     rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
-
     // Reset USB peripheral
     rcc::apb1::reset(rcc::apb1::Apb1Peripheral::Usb);
 
@@ -68,12 +63,12 @@ pub fn init()
         utils::write_register16(usb_istr, 0x0000);
     }
 
-    // Setup BTABLE and Endpoint 0
+    // Setup BTABLE
     enable_btable();
 
     // Setup Endpoint 0
     usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
-    // Setup Endpoint 1
+    // // Setup Endpoint 1
     // usb_endpoint::configure_ep(usb_types::Endpoints::EP1, usb_types::EndpointType::Control);
     // // Setup Endpoint 2
     // usb_endpoint::configure_ep(usb_types::Endpoints::EP2, usb_types::EndpointType::Control);
