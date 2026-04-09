@@ -64,29 +64,31 @@ pub enum USBBCDR
 
 pub enum USBEPnR
 {
-    EA      = 0,     // Endpoint Address (4 bits)
-    STAT_TX = 4, // Status bits for transmission
-    DTOG_TX = 6, // Data Toggle for transmission
+    EA      = 0,  // Endpoint Address (4 bits)
+    STAT_TX = 4,  // Status bits for transmission
+    DTOG_TX = 6,  // Data Toggle for transmission
     CTR_TX  = 7,  // Correct Transfer for transmission
+    EP_KIND = 8,  // Endpoint Kind
+    EP_TYPE = 9,  // Endpoint Type (2 bits) 
     SETUP   = 11, // Setup transaction completed
     STAT_RX = 12, // Status bits for reception
     DTOG_RX = 14, // Data Toggle for reception
-    CTR_RX  = 15,  // Correct Transfer for reception
+    CTR_RX  = 15, // Correct Transfer for reception
 }
 
 pub enum STATRX_Status
 {
     VALID    = 0b00,  // Valid
-    NAK      = 0b01,    // NAK
-    STALL    = 0b10,  // STALL
+    NAK      = 0b10,    // NAK
+    STALL    = 0b01,  // STALL
     DISABLED = 0b11, // Disabled
 }
 
 pub enum STATTX_Status
 {
     VALID    = 0b00,  // Valid
-    NAK      = 0b01,    // NAK
-    STALL    = 0b10,  // STALL
+    NAK      = 0b10,    // NAK
+    STALL    = 0b01,  // STALL
     DISABLED = 0b11, // Disabled
 }
 
