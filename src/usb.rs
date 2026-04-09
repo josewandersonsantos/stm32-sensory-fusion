@@ -1,47 +1,176 @@
 #![allow(dead_code)]
+#[allow(non_camel_case_types)]
 
+use crate::irq;
 use crate::utils;
 use crate::rcc;
 use crate::mcu;
 
+#[derive(Clone, Copy, PartialEq)]
+enum Ep0State
+{
+    Idle,       // Waiting for SETUP packet
+    Setup,      // SETUP packet received
+    DataIn,     // Sending data to host (IN)
+    DataOut,    // Receiving data from host (OUT) - not used in this minimal version
+    StatusIn,   // Status stage (IN)
+    StatusOut,  // Status stage (OUT)
+}
+
+#[repr(u8)]
+enum UsbRequest
+{
+    GetDescriptor = 6,
+}
+
+enum USBCNTR
+{
+    FRES = 0,   // Force Reset
+    PDWN = 1,   // Power Down
+    LPMODE = 2, // Low-power mode
+    FSUSP = 3,  // Force Suspend
+    RESUME = 4, // Resume request
+    ESOFM = 8,  // Start of Frame interrupt mask
+    SOFM = 9,   // Start of Frame interrupt mask
+    RESETM = 10, // USB Reset interrupt mask
+    SUSPM = 11,  // Suspend mode interrupt mask
+    WKUPM = 12,  // Wakeup interrupt mask
+    ERRM = 13,   // Error interrupt mask
+    PMAOVRM = 14, // Packet Memory Area Over/underrun interrupt mask
+    CTRM = 15,  // Correct Transfer interrupt mask
+}
+
+enum USBFNR
+{
+    FN = 0,     // Frame Number (11 bits)
+    LSOFL = 11, // Lost SOF HIGH
+    LSOFH = 12, // Lost SOF HIGH
+    LCK = 13,   // Locked
+    RXDM = 14,  // Receive Data Minus (1 bit)
+    RXDP = 15,  // Receive Data Plus (1 bit)
+}
+enum USBDADDR
+{
+    ADD = 0,    // Device Address (7 bits)
+    EF = 7,     // Enable Function
+}
+
+enum USBBTABLE
+{
+    BTABLE = 3, // Base address of the buffer table (in 512-byte units)
+}
+
+enum USBEPnR
+{
+    EA = 0,     // Endpoint Address (4 bits)
+    STAT_TX = 4, // Status bits for transmission
+    DTOG_TX = 6, // Data Toggle for transmission
+    CTR_TX = 7,  // Correct Transfer for transmission
+    STAT_RX = 12, // Status bits for reception
+    DTOG_RX = 14, // Data Toggle for reception
+    CTR_RX = 15,  // Correct Transfer for reception
+}
+
+enum STATRX_Status
+{
+    VALID = 0,  // Valid
+    NAK = 1,    // NAK
+    STALL = 2,  // STALL
+    DISABLED = 3, // Disabled
+}
+
+enum STATTX_Status
+{
+    VALID = 0,  // Valid
+    NAK = 1,    // NAK
+    STALL = 2,  // STALL
+    DISABLED = 3, // Disabled
+}
+
+enum EndpointType
+{
+    Bulk = 0,
+    Control = 1,
+    Isochronous = 2,
+    Interrupt = 3,
+}
+
+enum USBISTR
+{
+    ESOF = 8,   // Start of Frame
+    SOF = 9,    // Start of Frame
+    RESET = 10, // USB Reset
+    SUSP = 11,  // Suspend mode
+    WKUP = 12,  // Wakeup
+    ERR = 13,   // Error
+    PMAOVR = 14, // Packet Memory Area Over/underrun
+    CTR = 15,   // Correct Transfer
+}
+
+enum USBBCDR
+{
+    DPPU = 15, // D+ Pull-up
+}
+
+/// Initializes the USB peripheral on STM32F103 (BluePill)
 pub fn init()
 {
-    // 1. Enable USB clock
+    // Enable USB clock
     rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
 
-    // 2. Reset USB peripheral
-    let rcc_apb1rstr = mcu::RCC_APB1RSTR as *mut u32;
+    // Reset USB peripheral
+    rcc::apb1::reset(rcc::apb1::Apb1Peripheral::Usb);
 
-    utils::set_bit(rcc_apb1rstr, 23);   // USBRST
-    utils::clear_bit(rcc_apb1rstr, 23);
+    // Discconnect to USB host by disabling internal pull-up on D+
+    let usb_bcdr = mcu::USB_BCDR as *mut u16;
+    utils::clear_bit16(usb_bcdr, USBBCDR::DPPU as u8); // DPPU = 0
 
-    // 3. Clear power down
-    let usb_cntr = mcu::USB_CNTR as *mut u32;
-
-    utils::clear_bit(usb_cntr, 1); // PDWN = 0
-
-    // 4. Wait a bit (important)
-    delay();
-
-    // 5. Enable pull-up (connect to host)
-    let usb_bcdr = mcu::USB_BCDR as *mut u32;
-
-    utils::set_bit(usb_bcdr, 15); // DPPU
-}
-
-fn delay()
-{
-    for _ in 0..10_000
-    {
-        unsafe { core::ptr::read_volatile(&0); }
-    }
-}
-
-pub fn write(data :u8)
-{
+    // Clear Power Down
+    let usb_cntr = mcu::USB_CNTR as *mut u16;
+    utils::clear_bit16(usb_cntr, USBCNTR::PDWN as u8); // PDWN = 0
     
+    // Small delay after waking up the peripheral
+    utils::delay_ms(50);
+
+    // Force Reset bits
+    utils::clear_bit16(usb_cntr, USBCNTR::FRES as u8); // FRES = 0
+
+    unsafe 
+    {
+        let usb_istr = mcu::USB_ISTR as *mut u16;
+        utils::write_register16(usb_istr, 0x0000);
+    }
+
+    //unsafe {utils::write_register16(usb_cntr, 0xFFFF);} // ALL
+    // Enable Correct Transfer interrupt
+    utils::set_bit16(usb_cntr, USBCNTR::CTRM as u8); // CTRM
+    // Enable Reset interrupt
+    utils::set_bit16(usb_cntr, USBCNTR::RESETM as u8); // RESETM
+    // Enable Suspend interrupt
+    utils::set_bit16(usb_cntr, USBCNTR::SUSPM as u8); // SUSPM
+    // Enable Wakeup interrupt
+    utils::set_bit16(usb_cntr, USBCNTR::WKUPM as u8); // WKUPM
+
+    // Enable USB Low Priority interrupt in NVIC
+    irq::enable_irq(irq::IRQn::USB_LP_CAN1_RX0 as u32);
+    // irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 8);
+
+    utils::delay_ms(50);
+
+    // Connect to USB host by enabling internal pull-up on D+
+    let usb_bcdr = mcu::USB_BCDR as *mut u16;
+    utils::set_bit16(usb_bcdr, USBBCDR::DPPU as u8); // DPPU = 1
+
 }
+
+/// Placeholder for future serial write (CDC or custom)
+pub fn write(data: u8)
+{
+    // TODO: Implement data transmission
+}
+
+/// Placeholder for future bulk write
 pub fn write_bytes(data: &[u8], len: u16)
 {
-
+    // TODO: Implement data transmission
 }
