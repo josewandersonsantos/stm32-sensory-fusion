@@ -13,7 +13,9 @@ mod rcc;
 mod exti;
 mod gpio;
 mod usart;
-// mod usb;
+mod usb_types;
+mod usb_endpoint;
+mod usb;
 mod crc;
 mod watchdog;
 mod irq;
@@ -40,9 +42,15 @@ fn panic(_info: &PanicInfo) -> !
  * CALLBACKS IT
  */
 #[no_mangle]
+pub extern "C" fn SysTick_Handler()
+{
+    loop {}
+}
+
+#[no_mangle]
 pub extern "C" fn USB_LP_CAN_RX0_Handler()
 {
-    //usb::handle_usb_interrupt();
+    usb::handle_usb_interrupt();
 }
 
 #[no_mangle]
@@ -143,30 +151,45 @@ fn cb_coords_from_gps(lat: f32, lng: f32, height : f32)
 #[no_mangle]
 fn main() -> !
 {
-    mcu::init_clock(mcu::SysClock::HSE8MHz, false);
+    // Set system clock
+    mcu::init_clock(mcu::SysClock::HSE72MHz);
 
+    // RCC peripheral clocks
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::Afio);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPc);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPb);
     rcc::apb2::enable(rcc::apb2::Apb2Peripheral::IoPa);
-    rcc::apb1::enable(rcc::apb1::Apb1Peripheral::Usb);
+    // rcc::ahb::enable(rcc::ahb::AHBPeripheral::Crc);
     
     // IWDG
-    watchdog::iwdg::init(500);
+    // watchdog::iwdg::init(500);
     
     // PC13 (LED)
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
-        
-    // // USB
-    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
-    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
-    // usb::init();
+    // PA8 (MCO)
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO08, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
 
-    // loop
-    // {
-    //     led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
-    //     utils::delay_ms(100);
-    // }
+    // USB
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::Input, gpio::GpioConfig::Floating, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    usb::init();
+
+    loop
+    {
+        unsafe
+        {
+            let istr = utils::read_register16(mcu::USB_ISTR as *const u16);
+            let ep0 = utils::read_register16(mcu::USB_EP0R as *const u16);
+            let cfgr = utils::read_register32(mcu::RCC_CFGR as *const u32);
+            // let usbpre = (cfgr >> 22) & 1;
+            // if (istr & (1<<10)) != 0
+            // {
+            //     usb::handle_usb_interrupt();
+            // }
+            led::led_toggle(mcu::GPIOC_BASE, mcu::GPIO13);
+            utils::delay_ms(100);
+        }
+    }
 
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
