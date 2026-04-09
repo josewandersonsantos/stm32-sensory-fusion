@@ -2,7 +2,6 @@
 #[allow(non_camel_case_types)]
 
 use crate::irq;
-use crate::usb;
 use crate::utils;
 use crate::rcc;
 use crate::mcu;
@@ -21,6 +20,10 @@ fn enable_btable()
     // Set BTABLE address to 0x0000 (start of PMA)
     let usb_btable = mcu::USB_BTABLE as *mut u16;
     unsafe { core::ptr::write_volatile(usb_btable, 0x0000); }
+
+    // Clear EP0R register
+    let ep0r = mcu::USB_EP0R as *mut u16;
+    unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
 }
 
 pub fn reconnect()
@@ -30,7 +33,7 @@ pub fn reconnect()
     utils::clear_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 0
 
     // Small delay to ensure host detects disconnection
-    utils::delay_ms(200);
+    utils::delay_ms(600);
     // Reconnect by setting DPPU
     utils::set_bit16(usb_bcdr, usb_types::USBBCDR::DPPU as u8); // DPPU = 1
 }
@@ -52,7 +55,7 @@ pub fn init()
     utils::clear_bit16(usb_cntr, usb_types::USBCNTR::PDWN as u8); // PDWN = 0
     
     // Small delay after waking up the peripheral
-    utils::delay_ms(50);
+    utils::delay_ms(100);
 
     // Force Reset bits
     utils::clear_bit16(usb_cntr, usb_types::USBCNTR::FRES as u8); // FRES = 0
@@ -78,16 +81,12 @@ pub fn init()
     utils::set_bit16(usb_cntr, usb_types::USBCNTR::CTRM as u8); // CTRM
     // Enable Reset interrupt
     utils::set_bit16(usb_cntr, usb_types::USBCNTR::RESETM as u8); // RESETM
-    // Enable Suspend interrupt
-    utils::set_bit16(usb_cntr, usb_types::USBCNTR::SUSPM as u8); // SUSPM
-    // Enable Wakeup interrupt
-    utils::set_bit16(usb_cntr, usb_types::USBCNTR::WKUPM as u8); // WKUPM
 
     // Enable USB Low Priority interrupt in NVIC
     irq::enable_irq(irq::IRQn::USB_LP_CAN1_RX0 as u32);
-    // irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 8);
+    irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 6);
 
-    utils::delay_ms(50);
+    // utils::delay_ms(50);
 
     // Connect to USB host by enabling internal pull-up on D+
     let usb_bcdr = mcu::USB_BCDR as *mut u16;
