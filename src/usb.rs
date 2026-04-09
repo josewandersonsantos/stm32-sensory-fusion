@@ -6,6 +6,34 @@ use crate::utils;
 use crate::rcc;
 use crate::mcu;
 
+/// Packet Memory Area (PMA) base address in the USB peripheral
+const PMA_BASE: u32 = 0x40006000;
+
+/// Global state for Endpoint 0 (Control Endpoint)
+static mut EP0_STATE: Ep0State = Ep0State::Idle;
+static mut EP0_DATA: [u8; 64] = [0; 64];   // Buffer for EP0 data stage
+static mut EP0_LEN: usize = 0;              // Total length to transfer
+static mut EP0_POS: usize = 0;              // Current position in the buffer
+
+/// Standard USB Device Descriptor (minimal, for testing)
+const DEVICE_DESCRIPTOR: [u8; 18] =
+[
+    18,           // bLength
+    1,            // bDescriptorType = DEVICE
+    0x00, 0x02,   // bcdUSB = 2.00
+    0x00,         // bDeviceClass
+    0x00,         // bDeviceSubClass
+    0x00,         // bDeviceProtocol
+    64,           // bMaxPacketSize0 = 64 bytes
+    0x34, 0x12,   // idVendor  (0x1234)
+    0x78, 0x56,   // idProduct (0x5678)
+    0x00, 0x01,   // bcdDevice
+    1,            // iManufacturer
+    2,            // iProduct
+    3,            // iSerialNumber
+    1             // bNumConfigurations
+];
+
 #[derive(Clone, Copy, PartialEq)]
 enum Ep0State
 {
@@ -112,6 +140,103 @@ enum USBBCDR
     DPPU = 15, // D+ Pull-up
 }
 
+/// Sets STAT_RX to VALID (toggles the bits)
+fn set_stat_rx_valid()
+{
+    let ep = mcu::USB_EP0R as *mut u16;
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(ep);
+        // mantém CTR bits
+        // val &= (1 << 15) | (1 << 7);
+        // val ^= (0b11 << 12);       // Toggle STAT_RX bits
+        // core::ptr::write_volatile(ep, val);
+        core::ptr::write_volatile(ep, val ^ (0b11 << 12));
+    }
+}
+
+fn set_stat_tx_nak()
+{
+    let ep = mcu::USB_EP0R as *mut u16;
+
+    unsafe
+    {
+        let val = core::ptr::read_volatile(ep);
+        core::ptr::write_volatile(ep, val ^ (0b10 << 4));
+    }
+}
+
+/// Enables the Buffer Table (BTABLE) and clears EP0 register
+fn enable_btable()
+{
+    // Set BTABLE address to 0x0000 (start of PMA)
+    let usb_btable = mcu::USB_BTABLE as *mut u16;
+    unsafe { core::ptr::write_volatile(usb_btable, 0x0000); }
+
+    // Clear EP0R register
+    let ep0r = mcu::USB_EP0R as *mut u16;
+    unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
+}
+
+/// Configures Endpoint 0 (Control Endpoint) buffers and registers
+fn configure_ep0()
+{
+    unsafe
+    {
+        // === Buffer Description Table (BTABLE) entries for EP0 ===
+        // BTABLE está em 0x0000 da PMA
+
+        // TX Buffer (IN direction) - endereço recomendado: 0x40
+        utils::write_register16((PMA_BASE + 0x00) as *mut u16, 0x40);   // ADDR_TX = 0x40
+        utils::write_register16((PMA_BASE + 0x02) as *mut u16, 0x00);   // COUNT_TX = 0
+
+        // RX Buffer (OUT/SETUP direction) - endereço recomendado: 0x80 (64 bytes após TX)
+        utils::write_register16((PMA_BASE + 0x04) as *mut u16, 0x80);   // ADDR_RX = 0x80
+        utils::write_register16((PMA_BASE + 0x06) as *mut u16, 0x8400); // COUNT_RX = 64 bytes (BL_SIZE=1, NUM_BLOCK=2)
+    }
+
+    // === Configure EP0R Register ===
+    let ep0r = mcu::USB_EP0R as *mut u16;
+    let daddr = mcu::USB_DADDR as *mut u16;
+    unsafe
+    {
+        let mut val: u16 = 0;
+
+        // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0 (já é 0)
+        // Bits [8:9]  = EP_TYPE  → 01 = Control
+        val |= (0b01 << 9);
+
+        // STAT_TX [5:4] = 01 = NAK     (não tem nada para enviar ainda)
+        // STAT_RX [13:12] = 11 = VALID (pronto para receber SETUP)
+        // val |= (0b01 << 4) | (0b11 << 12);
+
+        core::ptr::write_volatile(ep0r, val);
+        core::ptr::write_volatile(daddr, 0x0000);
+    }
+
+    set_stat_tx_nak();
+    set_stat_rx_valid();
+}
+
+pub fn reconnect()
+{
+    let usb_bcdr = mcu::USB_BCDR as *mut u16;
+    unsafe
+    {
+        // Disconnect by clearing DPPU
+        utils::clear_bit16(usb_bcdr, 15); // DPPU = 0
+    }
+
+    // Small delay to ensure host detects disconnection
+    utils::delay_ms(200);
+    
+    unsafe
+    {
+        // Reconnect by setting DPPU
+        utils::set_bit16(usb_bcdr, 15); // DPPU = 1
+    }
+}
+
 /// Initializes the USB peripheral on STM32F103 (BluePill)
 pub fn init()
 {
@@ -141,6 +266,12 @@ pub fn init()
         utils::write_register16(usb_istr, 0x0000);
     }
 
+    // Setup BTABLE and Endpoint 0
+    enable_btable();
+
+    // Setup Endpoint 0
+    configure_ep0();
+
     //unsafe {utils::write_register16(usb_cntr, 0xFFFF);} // ALL
     // Enable Correct Transfer interrupt
     utils::set_bit16(usb_cntr, USBCNTR::CTRM as u8); // CTRM
@@ -160,6 +291,8 @@ pub fn init()
     // Connect to USB host by enabling internal pull-up on D+
     let usb_bcdr = mcu::USB_BCDR as *mut u16;
     utils::set_bit16(usb_bcdr, USBBCDR::DPPU as u8); // DPPU = 1
+    
+    reconnect();
 
 }
 
