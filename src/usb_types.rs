@@ -1,0 +1,111 @@
+/// Packet Memory Area (PMA) base address in the USB peripheral
+pub const PMA_BASE: u32 = 0x40006000;
+
+
+#[repr(u8)]
+pub enum UsbRequest
+{
+    GetDescriptor = 6,
+}
+
+pub enum USBCNTR
+{
+    FRES = 0,   // Force Reset
+    PDWN = 1,   // Power Down
+    LPMODE = 2, // Low-power mode
+    FSUSP = 3,  // Force Suspend
+    RESUME = 4, // Resume request
+    ESOFM = 8,  // Start of Frame interrupt mask
+    SOFM = 9,   // Start of Frame interrupt mask
+    RESETM = 10, // USB Reset interrupt mask
+    SUSPM = 11,  // Suspend mode interrupt mask
+    WKUPM = 12,  // Wakeup interrupt mask
+    ERRM = 13,   // Error interrupt mask
+    PMAOVRM = 14, // Packet Memory Area Over/underrun interrupt mask
+    CTRM = 15,  // Correct Transfer interrupt mask
+}
+
+pub enum USBFNR
+{
+    FN = 0,     // Frame Number (11 bits)
+    LSOFL = 11, // Lost SOF HIGH
+    LSOFH = 12, // Lost SOF HIGH
+    LCK = 13,   // Locked
+    RXDM = 14,  // Receive Data Minus (1 bit)
+    RXDP = 15,  // Receive Data Plus (1 bit)
+}
+pub enum USBDADDR
+{
+    ADD = 0,    // Device Address (7 bits)
+    EF = 7,     // Enable Function
+}
+
+pub enum USBBTABLE
+{
+    BTABLE = 3, // Base address of the buffer table (in 512-byte units)
+}
+
+pub enum USBISTR
+{
+    ESOF = 8,   // Start of Frame
+    SOF = 9,    // Start of Frame
+    RESET = 10, // USB Reset
+    SUSP = 11,  // Suspend mode
+    WKUP = 12,  // Wakeup
+    ERR = 13,   // Error
+    PMAOVR = 14, // Packet Memory Area Over/underrun
+    CTR = 15,   // Correct Transfer
+}
+
+pub enum USBBCDR
+{
+    DPPU = 15, // D+ Pull-up
+}
+
+pub enum USBEPnR
+{
+    EA      = 0,     // Endpoint Address (4 bits)
+    STAT_TX = 4, // Status bits for transmission
+    DTOG_TX = 6, // Data Toggle for transmission
+    CTR_TX  = 7,  // Correct Transfer for transmission
+    SETUP   = 11, // Setup transaction completed
+    STAT_RX = 12, // Status bits for reception
+    DTOG_RX = 14, // Data Toggle for reception
+    CTR_RX  = 15,  // Correct Transfer for reception
+}
+
+pub enum STATRX_Status
+{
+    VALID    = 0b00,  // Valid
+    NAK      = 0b01,    // NAK
+    STALL    = 0b10,  // STALL
+    DISABLED = 0b11, // Disabled
+}
+
+pub enum STATTX_Status
+{
+    VALID    = 0b00,  // Valid
+    NAK      = 0b01,    // NAK
+    STALL    = 0b10,  // STALL
+    DISABLED = 0b11, // Disabled
+}
+
+pub enum EndpointType
+{
+    Bulk        = 0,
+    Control     = 1,
+    Isochronous = 2,
+    Interrupt   = 3,
+}
+
+pub enum Endpoints
+{
+    EP0 = 0,
+    EP1 = 1,
+    EP2 = 2,
+    EP3 = 3,
+    EP4 = 4,
+    EP5 = 5,
+    EP6 = 6,
+    EP7 = 7,
+}
