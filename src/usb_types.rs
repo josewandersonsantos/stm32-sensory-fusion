@@ -90,6 +90,14 @@ pub enum STATTX_Status
     DISABLED = 0b11, // Disabled
 }
 
+pub enum BTABLE_ADDRESS
+{
+    ADDR_TX = 0x00,   // Address of the TX buffer for the endpoint
+    COUNT_TX = 0x02,  // Number of bytes to transmit (for IN endpoints)
+    ADDR_RX = 0x04,   // Address of the RX buffer for the endpoint
+    COUNT_RX = 0x06,  // Number of bytes received (for OUT endpoints)
+}
+
 pub enum EndpointType
 {
     Bulk        = 0,
@@ -98,6 +106,7 @@ pub enum EndpointType
     Interrupt   = 3,
 }
 
+#[derive(Clone, Copy)]
 pub enum Endpoints
 {
     EP0 = 0,
