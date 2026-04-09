@@ -344,22 +344,9 @@ fn handle_get_descriptor(epn: usize, setup: &[u8])
 /// Handles SETUP packets (Standard Device Requests)
 fn handle_setup(epn: usize)
 {
-    let ep = match epn
-    {
-        0 => mcu::USB_EP0R as *mut u16,
-        1 => mcu::USB_EP1R as *mut u16,
-        2 => mcu::USB_EP2R as *mut u16,
-        3 => mcu::USB_EP3R as *mut u16,
-        4 => mcu::USB_EP4R as *mut u16,
-        5 => mcu::USB_EP5R as *mut u16,
-        6 => mcu::USB_EP6R as *mut u16,
-        7 => mcu::USB_EP7R as *mut u16,
-        _ => return
-    };
-
     let mut setup = [0u8; 8];
 
-    unsafe 
+    unsafe
     {
         // Read 8-byte SETUP packet from PMA
         pma_read(ENDPOINTS_HANDLERS[epn].rx_buffer_addr, &mut setup);
@@ -374,7 +361,7 @@ fn handle_setup(epn: usize)
         // GET_DESCRIPTOR
         6 => 
         {
-            handle_get_descriptor(epn,  &setup)
+            handle_get_descriptor(epn, &setup)
         },
         // Unsupported request → STALL
         _ => stall_ep(epn)
@@ -518,7 +505,7 @@ fn set_stat_rx_valid(epn: usize)
 
     unsafe
     {
-        let mut val = core::ptr::read_volatile(ep);
+        let val = core::ptr::read_volatile(ep);
         let stat_rx = (usb_types::STATRX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
         core::ptr::write_volatile(ep, val ^ stat_rx);
     }
