@@ -147,11 +147,8 @@ fn set_stat_rx_valid()
     unsafe
     {
         let mut val = core::ptr::read_volatile(ep);
-        // mantém CTR bits
-        // val &= (1 << 15) | (1 << 7);
-        // val ^= (0b11 << 12);       // Toggle STAT_RX bits
-        // core::ptr::write_volatile(ep, val);
-        core::ptr::write_volatile(ep, val ^ (0b11 << 12));
+        let stat_rx = (STATRX_Status::VALID as u16) << (USBEPnR::STAT_RX as u8);
+        core::ptr::write_volatile(ep, val ^ stat_rx);
     }
 }
 
@@ -162,7 +159,8 @@ fn set_stat_tx_nak()
     unsafe
     {
         let val = core::ptr::read_volatile(ep);
-        core::ptr::write_volatile(ep, val ^ (0b10 << 4));
+        let stat_tx_nak = (STATTX_Status::NAK as u16) << (USBEPnR::STAT_TX as u8);
+        core::ptr::write_volatile(ep, val ^ stat_tx_nak);
     }
 }
 
@@ -202,14 +200,9 @@ fn configure_ep0()
     {
         let mut val: u16 = 0;
 
-        // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0 (já é 0)
+        // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0
         // Bits [8:9]  = EP_TYPE  → 01 = Control
-        val |= (0b01 << 9);
-
-        // STAT_TX [5:4] = 01 = NAK     (não tem nada para enviar ainda)
-        // STAT_RX [13:12] = 11 = VALID (pronto para receber SETUP)
-        // val |= (0b01 << 4) | (0b11 << 12);
-
+        val |= (EndpointType::Control as u16) << (USBEPnR::EA as u8);
         core::ptr::write_volatile(ep0r, val);
         core::ptr::write_volatile(daddr, 0x0000);
     }
@@ -221,20 +214,13 @@ fn configure_ep0()
 pub fn reconnect()
 {
     let usb_bcdr = mcu::USB_BCDR as *mut u16;
-    unsafe
-    {
-        // Disconnect by clearing DPPU
-        utils::clear_bit16(usb_bcdr, 15); // DPPU = 0
-    }
+    // Disconnect by clearing DPPU
+    utils::clear_bit16(usb_bcdr, USBBCDR::DPPU as u8); // DPPU = 0
 
     // Small delay to ensure host detects disconnection
     utils::delay_ms(200);
-    
-    unsafe
-    {
-        // Reconnect by setting DPPU
-        utils::set_bit16(usb_bcdr, 15); // DPPU = 1
-    }
+    // Reconnect by setting DPPU
+    utils::set_bit16(usb_bcdr, USBBCDR::DPPU as u8); // DPPU = 1
 }
 
 /// Initializes the USB peripheral on STM32F103 (BluePill)
