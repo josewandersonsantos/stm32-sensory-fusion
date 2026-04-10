@@ -22,9 +22,9 @@ fn enable_btable()
     let usb_btable = mcu::USB_BTABLE as *mut u16;
     unsafe { core::ptr::write_volatile(usb_btable, 0x0000); }
 
-    // Clear EP0R register
-    let ep0r = mcu::USB_EP0R as *mut u16;
-    unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
+    // // Clear EP0R register
+    // let ep0r = mcu::USB_EP0R as *mut u16;
+    // unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
 }
 
 pub fn reconnect()
@@ -69,7 +69,8 @@ pub fn init()
     enable_btable();
 
     // Setup Endpoint 0
-    usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
+    // usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
+    
     // Enable Correct Transfer interrupt
     utils::set_bit16(usb_cntr, usb_types::USBCNTR::CTRM as u8); // CTRM
     // Enable Reset interrupt
