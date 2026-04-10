@@ -130,3 +130,13 @@ pub fn write_pin(port_base: u32, pin: u32, state: bool)
         utils::write_register32(odr, new_value);
     }
 }
+
+pub fn set_pin(port_base: u32, pin: u32)
+{
+    write_pin(port_base, pin, true);
+}
+
+pub fn clear_pin(port_base: u32, pin: u32)
+{
+    write_pin(port_base, pin, false);
+}
