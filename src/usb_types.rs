@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+
 /// Packet Memory Area (PMA) base address in the USB peripheral
 pub const PMA_BASE: u32 = 0x40006000;
 
@@ -5,7 +8,19 @@ pub const PMA_BASE: u32 = 0x40006000;
 #[repr(u8)]
 pub enum UsbRequest
 {
-    GetDescriptor = 6,
+    GET_STATUS        = 0,
+    CLEAR_FEATURE     = 1,
+    RESERVED0         = 2,
+    SET_FEATURE       = 3,
+    RESERVED1         = 4,
+    SET_ADDRESS       = 5,
+    GET_DESCRIPTOR    = 6,
+    SET_DESCRIPTOR    = 7,
+    GET_CONFIGURATION = 8,
+    SET_CONFIGURATION = 9,
+    GET_INTERFACE     = 10,
+    SET_INTERFACE     = 11,
+    SYNCH_FRAME       = 12,
 }
 
 pub enum USBCNTR
@@ -103,10 +118,10 @@ pub enum BTABLE_ADDRESS
 #[derive(Clone, Copy)]
 pub enum EndpointType
 {
-    Bulk        = 0,
-    Control     = 1,
-    Isochronous = 2,
-    Interrupt   = 3,
+    BULK        = 0,
+    CONTROL     = 1,
+    ISOCHRONOUS = 2,
+    INTERRUPT   = 3,
 }
 
 #[derive(Clone, Copy)]
