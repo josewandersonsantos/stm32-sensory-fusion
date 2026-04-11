@@ -1,8 +1,11 @@
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+#![allow(unused_variables)]
 
-static mut state_estimate: (f32, f32, f32) = (0.0, 0.0, 0.0); // Placeholder for state estimate (e.g., position, velocity)
-static mut error_covariance: f32 = 1.0; // Placeholder for error covariance
-static mut process_noise: f32 = 0.1; // Placeholder for process noise covariance
-static mut measurement_noise: f32 = 0.1; // Placeholder for measurement noise covariance
+static mut STATE_ESTIMATE: (f32, f32, f32) = (0.0, 0.0, 0.0); // Placeholder for state estimate (e.g., position, velocity)
+static mut ERROR_CONVARIANCE: f32 = 1.0; // Placeholder for error covariance
+static mut PROCESS_NOISE: f32 = 0.1; // Placeholder for process noise covariance
+static mut MEASUREMENT_NOISE: f32 = 0.1; // Placeholder for measurement noise covariance
 
 pub fn init()
 {
