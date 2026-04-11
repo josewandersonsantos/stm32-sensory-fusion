@@ -84,7 +84,7 @@ pub fn init()
     // Connect (Set PA15 high to power USB pull-up)
     gpio::set_pin(mcu::GPIOB_BASE, mcu::GPIO15);
     
-    //reconnect();
+    reconnect();
 
 }
 
