@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 use crate::irq;
 use crate::utils;
@@ -88,14 +88,14 @@ pub fn init()
 
 }
 
-/// Placeholder for future serial write (CDC or custom)
-pub fn write(data: u8)
-{
-    // TODO: Implement data transmission
-}
+// /// Placeholder for future serial write (CDC or custom)
+// pub fn write(data: u8)
+// {
+//     // TODO: Implement data transmission
+// }
 
-/// Placeholder for future bulk write
-pub fn write_bytes(data: &[u8], len: u16)
-{
-    // TODO: Implement data transmission
-}
+// /// Placeholder for future bulk write
+// pub fn write_bytes(data: &[u8], len: u16)
+// {
+//     // TODO: Implement data transmission
+// }
