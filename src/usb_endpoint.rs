@@ -101,19 +101,110 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
     Endpoint { number: usb_types::Endpoints::EP7, ..DEFAULT_EP },
 ];
 
-
-/// Sets STAT_TX to VALID (toggles the bits)
-fn set_stat_tx_valid()
+fn enable_usb_peripheral()
 {
-    let ep = mcu::USB_EP0R as *mut u16;
+    utils::set_bit16(mcu::USB_DADDR as *mut u16, usb_types::USBDADDR::EF as u8);
+}
+
+fn get_ep_register(epn: usize) -> *mut u16
+{
+    let ep = match epn
+    {
+        0 => mcu::USB_EP0R as *mut u16,
+        1 => mcu::USB_EP1R as *mut u16,
+        2 => mcu::USB_EP2R as *mut u16,
+        3 => mcu::USB_EP3R as *mut u16,
+        4 => mcu::USB_EP4R as *mut u16,
+        5 => mcu::USB_EP5R as *mut u16,
+        6 => mcu::USB_EP6R as *mut u16,
+        7 => mcu::USB_EP7R as *mut u16,
+        _ => panic!("ep num invalid")
+    };
+
+    ep
+}
+
+fn set_stat_bits(epr: *mut u16, mask: u16, target: u16)
+{
     unsafe
     {
-        let mut val = core::ptr::read_volatile(ep);
-        let stat_tx_valid = (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        val ^= stat_tx_valid;        // Toggle STAT_TX bits
-        core::ptr::write_volatile(ep, val);
-        let new_val = core::ptr::read_volatile(ep);
-        let new_val = core::ptr::read_volatile(ep);
+        let mut val = core::ptr::read_volatile(epr);
+
+        let current = val & mask;
+
+        // precisa togglar só os bits diferentes
+        let toggle = current ^ target;
+
+        val ^= toggle;
+
+        core::ptr::write_volatile(epr, val);
+    }
+}
+
+/// Sets STAT_RX to VALID (toggles the bits)
+fn set_stat_rx_valid(epn: usize)
+{
+    let epr = get_ep_register(epn);
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(epr);
+        val ^= (usb_types::STATRX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        core::ptr::write_volatile(epr, val);
+        let new_val = core::ptr::read_volatile(epr);
+        let new_val = core::ptr::read_volatile(epr);
+    }
+}
+
+/// Sets STAT_TX to VALID (toggles the bits)
+fn set_stat_tx_valid(epn: usize)
+{
+    let epr = get_ep_register(epn);
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(epr);
+        val ^= (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        core::ptr::write_volatile(epr, val);
+        let new_val = core::ptr::read_volatile(epr);
+        let new_val = core::ptr::read_volatile(epr);
+    }
+}
+
+fn set_stat_rx_nak(epn: usize)
+{
+    let epr = get_ep_register(epn);
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(epr);
+        val ^= (usb_types::STATRX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        core::ptr::write_volatile(epr, val);
+        let new_val = core::ptr::read_volatile(epr);
+        let new_val = core::ptr::read_volatile(epr);
+    }
+}
+
+fn set_stat_tx_nak(epn: usize)
+{
+    let epr = get_ep_register(epn);
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(epr);
+        val ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        core::ptr::write_volatile(epr, val);
+        let new_val = core::ptr::read_volatile(epr);
+        let new_val = core::ptr::read_volatile(epr);
+    }
+}
+
+/// Stalls both directions of Endpoint 0 (used for unsupported requests)
+fn stall_ep(epn: usize)
+{
+    let epr = get_ep_register(epn);
+    unsafe
+    {
+        let mut val = core::ptr::read_volatile(epr);
+        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        core::ptr::write_volatile(epr, val);
     }
 }
 
@@ -139,31 +230,51 @@ fn pma_read(addr: u16, buffer: &mut [u8])
 }
 
 /// Writes data from a buffer into the Packet Memory Area (PMA)
+// fn pma_write(addr: u16, data: &[u8])
+// {
+//     let pma = usb_types::PMA_BASE as *mut u16;
+
+//     for i in 0..data.len()
+//     {
+//         let index = (addr as usize / 2) + (i / 2);
+//         //let index = (addr as usize) + (i);
+//         let mut word = unsafe { core::ptr::read_volatile(pma.add(index)) };
+
+//         if i % 2 == 0
+//         {
+//             word = (word & 0xFF00) | (data[i] as u16);
+//         }
+//         else
+//         {
+//             word = (word & 0x00FF) | ((data[i] as u16) << 8);
+//         }
+
+//         unsafe { core::ptr::write_volatile(pma.add(index), word); }
+//     }
+// }
+
 fn pma_write(addr: u16, data: &[u8])
 {
     let pma = usb_types::PMA_BASE as *mut u16;
 
-    for i in 0..data.len()
+    let mut i = 0;
+    while i < data.len()
     {
-        // let index = (addr as usize / 2) + (i / 2);
-        let index = (addr as usize) + (i);
-        let mut word = unsafe { core::ptr::read_volatile(pma.add(index)) };
+        let index = (addr as usize / 2) + (i / 2);
 
-        if i % 2 == 0
-        {
-            word = (word & 0xFF00) | (data[i] as u16);
-        }
-        else
-        {
-            word = (word & 0x00FF) | ((data[i] as u16) << 8);
-        }
+        let low  = data[i] as u16;
+        let high = if i + 1 < data.len() { (data[i + 1] as u16) << 8 } else { 0 };
+
+        let word = low | high;
 
         unsafe { core::ptr::write_volatile(pma.add(index), word); }
+
+        i += 2;
     }
 }
 
 /// Sends the next chunk of data during a Data IN stage
-fn send_next_packet(addr_tx: u16, len: usize, pos: &mut usize, data: &[u8])
+fn send_next_packet(epn: usize, addr_tx: u16, len: usize, pos: &mut usize, data: &[u8])
 {
     let chunk =
     {
@@ -176,16 +287,32 @@ fn send_next_packet(addr_tx: u16, len: usize, pos: &mut usize, data: &[u8])
     *pos += chunk;
 
     // Update TX count and set TX status to VALID
-    write_count_tx(chunk as u16);
-    set_stat_tx_valid();
+    write_count_tx(epn, chunk as u16);
+    set_stat_rx_nak(epn);
+    set_stat_tx_valid(epn);
 }
 
 /// Writes the TX byte count for Endpoint 0 into PMA
-fn write_count_tx(count: u16)
+fn write_count_tx(epn: usize, count: u16)
 {
-    let addr = (usb_types::PMA_BASE + 0x02) as *mut u16;   // COUNT_TX field
     unsafe
     {
+        // let pma = usb_types::PMA_BASE as *mut u16;
+        // GET COUNT_TX BY ENDPOINT
+        // let addr = match epn
+        // {
+        //     0 => pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize) as *mut u16,
+        //     1 => pma.add(usb_types::BTABLE_ADDRESS::EP1_COUNT_TX as usize) as *mut u16,
+        //     2 => pma.add(usb_types::BTABLE_ADDRESS::EP2_COUNT_TX as usize) as *mut u16,
+        //     // 3 => pma.add(usb_types::BTABLE_ADDRESS::EP3_ADDR_TX as usize) as *mut u16,
+        //     // 4 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+        //     // 5 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+        //     // 6 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+        //     // 7 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+        //     _ => return
+        // };
+        let addr = (usb_types::PMA_BASE + 0x02) as *mut u16;   // COUNT_TX field
+        // let addr = (usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as u32) as *mut u16;   // COUNT_TX field
         core::ptr::write_volatile(addr, count);
     }
 }
@@ -196,7 +323,8 @@ fn clear_ctr_rx(ep: *mut u16)
     unsafe
     {
         let val = core::ptr::read_volatile(ep);
-        core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_RX as u16));
+        // core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_RX as u16));
+        core::ptr::write_volatile(ep, val & !(1 << 15));
     }
 }
 
@@ -206,90 +334,17 @@ fn clear_ctr_tx(ep: *mut u16)
     unsafe 
     {
         let val = core::ptr::read_volatile(ep);
-        core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_TX as u16));
-    }
-}
-
-/// Stalls both directions of Endpoint 0 (used for unsupported requests)
-fn stall_ep(epn: usize)
-{
-    let ep = match epn
-    {
-        0 => mcu::USB_EP0R as *mut u16,
-        1 => mcu::USB_EP1R as *mut u16,
-        2 => mcu::USB_EP2R as *mut u16,
-        3 => mcu::USB_EP3R as *mut u16,
-        4 => mcu::USB_EP4R as *mut u16,
-        5 => mcu::USB_EP5R as *mut u16,
-        6 => mcu::USB_EP6R as *mut u16,
-        7 => mcu::USB_EP7R as *mut u16,
-        _ => return
-    };
-
-    unsafe
-    {
-        let mut val = core::ptr::read_volatile(ep);
-        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_RX as u8);
-        core::ptr::write_volatile(ep, val);
-    }
-}
-
-/// Sets STAT_RX to VALID (toggles the bits)
-fn set_stat_rx_valid(epn: usize)
-{
-    let ep = match epn
-    {
-        0 => mcu::USB_EP0R as *mut u16,
-        1 => mcu::USB_EP1R as *mut u16,
-        2 => mcu::USB_EP2R as *mut u16,
-        3 => mcu::USB_EP3R as *mut u16,
-        4 => mcu::USB_EP4R as *mut u16,
-        5 => mcu::USB_EP5R as *mut u16,
-        6 => mcu::USB_EP6R as *mut u16,
-        7 => mcu::USB_EP7R as *mut u16,
-        _ => return
-    };
-
-    unsafe
-    {
-        let val = core::ptr::read_volatile(ep);
-        let stat_rx = (val & !(usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8)) |
-                                   (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
-        core::ptr::write_volatile(ep, stat_rx);
-    }
-}
-
-fn set_stat_tx_nak(epn: usize)
-{
-    let ep = match epn
-    {
-        0 => mcu::USB_EP0R as *mut u16,
-        1 => mcu::USB_EP1R as *mut u16,
-        2 => mcu::USB_EP2R as *mut u16,
-        3 => mcu::USB_EP3R as *mut u16,
-        4 => mcu::USB_EP4R as *mut u16,
-        5 => mcu::USB_EP5R as *mut u16,
-        6 => mcu::USB_EP6R as *mut u16,
-        7 => mcu::USB_EP7R as *mut u16,
-        _ => return
-    };
-
-    unsafe
-    {
-        let val = core::ptr::read_volatile(ep);
-        let stat_tx_nak = (val & !(usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8)) |
-                                       (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        core::ptr::write_volatile(ep, stat_tx_nak);
+        // core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_TX as u16));
+        core::ptr::write_volatile(ep, val & !(1 << 7));
     }
 }
 
 /// Handles GET_DESCRIPTOR request
-fn handle_get_descriptor(epn: usize, setup: &[u8])
+fn handle_get_descriptor(epn: usize, wvalue:u16, wlength: u16)
 {
     unsafe
     {
-        let desc_type = setup[3];
+        let desc_type  = wvalue;
         let data = match desc_type
         {
             // Device Descriptor
@@ -305,12 +360,12 @@ fn handle_get_descriptor(epn: usize, setup: &[u8])
         };
 
         // Limit response size to what the host requested
-        ENDPOINTS_HANDLERS[epn].length   = core::cmp::min(setup[6] as usize, data.len());
+        ENDPOINTS_HANDLERS[epn].length   = core::cmp::min(wlength as usize, data.len());
         ENDPOINTS_HANDLERS[epn].position = 0;
         ENDPOINTS_HANDLERS[epn].data_buffer[..ENDPOINTS_HANDLERS[epn].length].copy_from_slice(&data[..ENDPOINTS_HANDLERS[epn].length]);
         ENDPOINTS_HANDLERS[epn].state = EndpointState::DataIn;
         
-        send_next_packet(ENDPOINTS_HANDLERS[epn].tx_buffer_addr, ENDPOINTS_HANDLERS[epn].length, &mut ENDPOINTS_HANDLERS[epn].position, &ENDPOINTS_HANDLERS[epn].data_buffer);
+        send_next_packet(epn, ENDPOINTS_HANDLERS[epn].tx_buffer_addr, ENDPOINTS_HANDLERS[epn].length, &mut ENDPOINTS_HANDLERS[epn].position, &ENDPOINTS_HANDLERS[epn].data_buffer);
     }
 }
 
@@ -329,7 +384,7 @@ fn handle_get_status(epn: usize, wlength: u16)
         ep.position = 0;
         ep.state = EndpointState::DataIn;
 
-        send_next_packet(ep.tx_buffer_addr, ep.length, &mut ep.position, &ep.data_buffer);
+        send_next_packet(epn, ep.tx_buffer_addr, ep.length, &mut ep.position, &ep.data_buffer);
     }
 }
 
@@ -341,12 +396,6 @@ fn handle_setup(epn: usize)
     unsafe
     {
         // Read 8-byte SETUP packet from PMA
-        // let pma = usb_types::PMA_BASE as *const u16;
-        // let ADDR_TX_0  = utils::read_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_TX as u32) as *const u16);
-        // let ADDR_RX_0  = utils::read_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_RX as u32) as *const u16);
-        // let COUNT_TX_0 = utils::read_register16(((usb_types::PMA_BASE + (usb_types::BTABLE_ADDRESS::COUNT_TX as u32)) as *const u16)); // & 0x3FF; // Lower 10 bits contain the byte count transmitted
-        // let COUNT_RX_0 = utils::read_register16(((usb_types::PMA_BASE + (usb_types::BTABLE_ADDRESS::COUNT_RX as u32)) as *const u16)); // & 0x3FF; // Lower 10 bits contain the byte count received
-        
         // let base = usb_types::PMA_BASE as *const u16;
         // let addr_tx  = core::ptr::read_volatile(base.add(0));   // ADDR_TX  (offset 0x00)
         // let count_tx = core::ptr::read_volatile(base.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
@@ -359,11 +408,11 @@ fn handle_setup(epn: usize)
     }
 
     // bRequest
-    let brequesttype  = setup[0];
-    let brequest      = setup[1];
-    let wvalue       = ((setup[3] as u16) << 8) | (setup[2] as u16);
-    let windex       = ((setup[5] as u16) << 8) | (setup[4] as u16);
-    let wlength      = ((setup[7] as u16) << 8) | (setup[6] as u16);
+    let brequesttype = setup[0];
+    let brequest     = setup[1];
+    let wvalue      = ((setup[3] as u16) << 8) | (setup[2] as u16);
+    let windex      = ((setup[5] as u16) << 8) | (setup[4] as u16);
+    let wlength     = ((setup[7] as u16) << 8) | (setup[6] as u16);
 
     match brequest
     {
@@ -375,7 +424,7 @@ fn handle_setup(epn: usize)
         // GET_DESCRIPTOR
         6 => 
         {
-            handle_get_descriptor(epn, &setup)
+            handle_get_descriptor(epn, wvalue, wlength)
         },
         // Unsupported request → STALL
         _ => stall_ep(epn)
@@ -394,13 +443,14 @@ fn handle_in(epn: usize)
                 if ENDPOINTS_HANDLERS[epn].position < ENDPOINTS_HANDLERS[epn].length
                 {
                     // More data to send
-                    send_next_packet(ENDPOINTS_HANDLERS[epn].tx_buffer_addr, ENDPOINTS_HANDLERS[epn].length, &mut ENDPOINTS_HANDLERS[epn].position, &ENDPOINTS_HANDLERS[epn].data_buffer);
+                    send_next_packet(epn, ENDPOINTS_HANDLERS[epn].tx_buffer_addr, ENDPOINTS_HANDLERS[epn].length, &mut ENDPOINTS_HANDLERS[epn].position, &ENDPOINTS_HANDLERS[epn].data_buffer);
                 } 
                 else
                 {
                     // Data stage finished → go to Status OUT stage
                     ENDPOINTS_HANDLERS[epn].state = EndpointState::StatusOut;
                     set_stat_rx_valid(epn);
+                    set_stat_tx_nak(epn);
                 }
             }
             EndpointState::StatusIn =>
@@ -424,6 +474,8 @@ fn handle_out(epn: usize)
             {
                 // Status stage completed
                 ENDPOINTS_HANDLERS[epn].state = EndpointState::Idle;
+                set_stat_rx_valid(epn);
+                set_stat_tx_nak(epn);
             }
             _ => {}
         }
@@ -433,19 +485,7 @@ fn handle_out(epn: usize)
 /// Main handler for Endpoint 0 (Control Endpoint)
 pub fn handler_endpoint(epn: usize)
 {
-    let epr = match epn
-    {
-        0 => mcu::USB_EP0R as *mut u16,
-        1 => mcu::USB_EP1R as *mut u16,
-        2 => mcu::USB_EP2R as *mut u16,
-        3 => mcu::USB_EP3R as *mut u16,
-        4 => mcu::USB_EP4R as *mut u16,
-        5 => mcu::USB_EP5R as *mut u16,
-        6 => mcu::USB_EP6R as *mut u16,
-        7 => mcu::USB_EP7R as *mut u16,
-        _ => return
-    };
-
+    let epr = get_ep_register(epn);
     let ep = unsafe { core::ptr::read_volatile(epr) };
 
     // ========================
@@ -462,10 +502,9 @@ pub fn handler_endpoint(epn: usize)
             // Regular OUT data packet
             handle_out(epn);
         }
-
         clear_ctr_rx(epr);
     }
-
+    
     // ========================
     // TX Side (IN packet transmission completed)
     // ========================
@@ -474,6 +513,7 @@ pub fn handler_endpoint(epn: usize)
         handle_in(epn);
         clear_ctr_tx(epr);
     }
+
 }
 
 pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
@@ -484,72 +524,38 @@ pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
         usb_types::Endpoints::EP0 =>
         {
             // Clear EP0R register
-            let ep0r = mcu::USB_EP0R as *mut u16;
-            // unsafe { core::ptr::write_volatile(ep0r, 0x0000); }
-            
+            let ep0r = mcu::USB_EP0R as *mut u16;            
             // === Buffer Description Table (BTABLE) entries for EP0 ===
             unsafe
             {
-                // BTABLE are in 0x0000 from PMA
-                // TX Buffer (IN direction) - endereço recomendado: 0x40
-                // utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_TX as u32) as *mut u16, ENDPOINTS_HANDLERS[0].tx_buffer_addr); // ADDR_TX = 0x40
-                // utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::COUNT_TX as u32) as *mut u16, ENDPOINTS_HANDLERS[0].tx_count);      // COUNT_TX = 0
-
-                // // RX Buffer (OUT/SETUP direction) - endereço recomendado: 0x80 (64 bytes após TX)
-                // utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_RX as u32) as *mut u16, ENDPOINTS_HANDLERS[0].rx_buffer_addr); // ADDR_RX = 0x80
-                // utils::write_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::COUNT_RX as u32) as *mut u16, ENDPOINTS_HANDLERS[0].rx_count);      // COUNT_RX = 64 bytes (BL_SIZE=1, NUM_BLOCK=2)
-                
-                // === Buffer Descriptor Table (BTABLE) ===
-                // utils::write_register16((usb_types::PMA_BASE + 0x00) as *mut u16, 0x40);  // ADDR_TX
-                // utils::write_register16((usb_types::PMA_BASE + 0x02) as *mut u16, 0x0000);
-
-                // utils::write_register16((usb_types::PMA_BASE + 0x04) as *mut u16, 0x80);   // ADDR_RX
-                // utils::write_register16((usb_types::PMA_BASE + 0x06) as *mut u16, 0x8400); // 64 bytes ← força sempre
-
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x00) as *mut u16, 0x40 as u16);  // ADDR_TX
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x02) as *mut u16, 0x0000 as u16);
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x04) as *mut u16, 0x80 as u16);   // ADDR_RX
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x06) as *mut u16, 0x8400 as u16); // 64 bytes ← força sempre
-                
                 let pma = usb_types::PMA_BASE as *mut u16;
-
-                core::ptr::write_volatile(pma.add(6), 0x8400);  // COUNT_RX
-                core::ptr::write_volatile(pma.add(4), 0x80);    // ADDR_RX
-                core::ptr::write_volatile(pma.add(2), 0x0000);  // COUNT_TX
-                core::ptr::write_volatile(pma.add(0), 0x40);    // ADDR_TX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_RX as usize), ENDPOINTS_HANDLERS[0].rx_count);  // COUNT_RX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_RX as usize), ENDPOINTS_HANDLERS[0].rx_buffer_addr);    // ADDR_RX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize), ENDPOINTS_HANDLERS[0].tx_count);  // COUNT_TX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_TX as usize), ENDPOINTS_HANDLERS[0].tx_buffer_addr);    // ADDR_TX
                 
-                //let base = usb_types::PMA_BASE as *const u16;
                 // let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
                 // let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
                 // let count_rx = core::ptr::read_volatile(pma.add(6));   // COUNT_RX (offset 0x06)
                 // let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
                 // let count_tx = core::ptr::read_volatile(pma.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
-                }
 
-            // === Configure EP0R Register ===
-            let daddr = mcu::USB_DADDR as *mut u16;
-            unsafe
-            {
+                // === Configure EP0R Register ===
                 let mut val: u16 = 0;
-
                 // Bits [3:0]  = EA[3:0]  → Endpoint Address = 0
                 // Bits [8:9]  = EP_TYPE  → 01 = Control
-                // val |= (ENDPOINTS_HANDLERS[0].address as u16) << (usb_types::USBEPnR::EA as u8);
-                // val |= (ep_type as u16) << (usb_types::USBEPnR::EP_TYPE as u8);
-                val |= 0b01 << 9; // CONTROL
-                val |= (0b01 << 4) | (0b11 << 12); // STAT_TX = NAK, STAT_RX = VALID
+                val |= ((ep_type as u16) << (usb_types::USBEPnR::EP_TYPE as u8));
                 core::ptr::write_volatile(ep0r, val);
-                // core::ptr::write_volatile(daddr, ENDPOINTS_HANDLERS[0].rx_buffer_addr);
-                core::ptr::write_volatile(daddr, 0x80);
             }
 
-            // set_stat_tx_nak(0);
-            // set_stat_rx_valid(0);
+            set_stat_tx_nak(usb_types::Endpoints::EP0 as usize);
+            set_stat_rx_valid(usb_types::Endpoints::EP0 as usize);
         }
         _ => return
 
     }
-    
+    // Enable USB peripheral
+    enable_usb_peripheral();    
 }
 
 /// USB Low Priority Interrupt Handler
