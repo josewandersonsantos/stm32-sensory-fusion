@@ -4,6 +4,20 @@
 /// Packet Memory Area (PMA) base address in the USB peripheral
 pub const PMA_BASE: u32 = 0x40006000;
 
+#[repr(u8)]
+
+#[derive(Clone, Copy)]
+pub enum Endpoints
+{
+    EP0 = 0,
+    EP1 = 1,
+    EP2 = 2,
+    EP3 = 3,
+    EP4 = 4,
+    EP5 = 5,
+    EP6 = 6,
+    EP7 = 7,
+}
 
 #[repr(u8)]
 pub enum UsbRequest
@@ -49,6 +63,8 @@ pub enum USBFNR
     RXDM = 14,  // Receive Data Minus (1 bit)
     RXDP = 15,  // Receive Data Plus (1 bit)
 }
+
+#[repr(u8)]
 pub enum USBDADDR
 {
     ADD = 0,    // Device Address (7 bits)
@@ -109,10 +125,24 @@ pub enum STATTX_Status
 
 pub enum BTABLE_ADDRESS
 {
-    ADDR_TX = 0x00,   // Address of the TX buffer for the endpoint
-    COUNT_TX = 0x02,  // Number of bytes to transmit (for IN endpoints)
-    ADDR_RX = 0x04,   // Address of the RX buffer for the endpoint
-    COUNT_RX = 0x06,  // Number of bytes received (for OUT endpoints)
+    EP0_ADDR_TX = 0x00,   // Endpoint 0 Address of the TX buffer for the endpoint
+    EP0_COUNT_TX = 0x02,  // Endpoint 0 Number of bytes to transmit (for IN endpoints)
+    EP0_ADDR_RX = 0x04,   // Endpoint 0 Address of the RX buffer for the endpoint
+    EP0_COUNT_RX = 0x06,  // Endpoint 0 Number of bytes received (for OUT endpoints)
+    
+    EP1_ADDR_TX = 0x08,   // Endpoint 1 Address of the TX buffer for the endpoint
+    EP1_COUNT_TX = 0x0A,  // Endpoint 1 Number of bytes to transmit (for IN endpoints)
+    EP1_ADDR_RX = 0x0C,   // Endpoint 1 Address of the RX buffer for the endpoint
+    EP1_COUNT_RX = 0x0E,  // Endpoint 1 Number of bytes received (for OUT endpoints)
+
+    EP2_ADDR_TX = 0x10,   // Endpoint 2 Address of the TX buffer for the endpoint
+    EP2_COUNT_TX = 0x12,  // Endpoint 2 Number of bytes to transmit (for IN endpoints)
+    EP2_ADDR_RX = 0x14,   // Endpoint 2 Address of the RX buffer for the endpoint
+    EP2_COUNT_RX = 0x16,  // Endpoint 2 Number of bytes received (for OUT endpoints)
+    
+    /*
+     *
+     */
 }
 
 #[derive(Clone, Copy)]
@@ -122,17 +152,4 @@ pub enum EndpointType
     CONTROL     = 1,
     ISOCHRONOUS = 2,
     INTERRUPT   = 3,
-}
-
-#[derive(Clone, Copy)]
-pub enum Endpoints
-{
-    EP0 = 0,
-    EP1 = 1,
-    EP2 = 2,
-    EP3 = 3,
-    EP4 = 4,
-    EP5 = 5,
-    EP6 = 6,
-    EP7 = 7,
 }
