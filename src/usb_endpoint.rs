@@ -6,14 +6,15 @@
  */
  
 #![allow(dead_code)]
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
+#![allow(unused_variables)]
 
 use crate::utils;
 use crate::mcu;
 use crate::usb_types;
 
 #[derive(Clone, Copy, PartialEq)]
-enum Ep0State
+enum EndpointState
 {
     Idle,       // Waiting for SETUP packet
     Setup,      // SETUP packet received
@@ -31,7 +32,7 @@ struct Endpoint
     ep_type: usb_types::EndpointType,
     descriptor: [u8; 18], 
 
-    state: Ep0State,
+    state: EndpointState,
     data_buffer: [u8; 64], // Buffer for data to send/receive
     length: usize,         // Total length of data to transfer
     position: usize,       // Current position in the data buffer
@@ -45,9 +46,9 @@ const DEFAULT_EP: Endpoint = Endpoint
 {
     number: usb_types::Endpoints::EP0, // vai sobrescrever depois
     address: 0x00,
-    ep_type: usb_types::EndpointType::Control,
+    ep_type: usb_types::EndpointType::CONTROL,
     descriptor: [0; 18],
-    state: Ep0State::Idle,
+    state: EndpointState::Idle,
     data_buffer: [0; 64],
     length: 0,
     position: 0,
@@ -64,7 +65,7 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
     {
         number: usb_types::Endpoints::EP0,
         address: 0x00,
-        ep_type: usb_types::EndpointType::Control,
+        ep_type: usb_types::EndpointType::CONTROL,
         descriptor: 
         [
             18,           // bLength
@@ -82,7 +83,7 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
             3,            // iSerialNumber
             1             // bNumConfigurations
         ],        
-        state: Ep0State::Idle,
+        state: EndpointState::Idle,
         data_buffer: [0; 64],
         length: 0,
         position: 0,
@@ -307,7 +308,7 @@ fn handle_get_descriptor(epn: usize, setup: &[u8])
         ENDPOINTS_HANDLERS[epn].length   = core::cmp::min(setup[6] as usize, data.len());
         ENDPOINTS_HANDLERS[epn].position = 0;
         ENDPOINTS_HANDLERS[epn].data_buffer[..ENDPOINTS_HANDLERS[epn].length].copy_from_slice(&data[..ENDPOINTS_HANDLERS[epn].length]);
-        ENDPOINTS_HANDLERS[epn].state = Ep0State::DataIn;
+        ENDPOINTS_HANDLERS[epn].state = EndpointState::DataIn;
         
         send_next_packet(ENDPOINTS_HANDLERS[epn].tx_buffer_addr, ENDPOINTS_HANDLERS[epn].length, &mut ENDPOINTS_HANDLERS[epn].position, &ENDPOINTS_HANDLERS[epn].data_buffer);
     }
@@ -326,7 +327,7 @@ fn handle_get_status(epn: usize, wlength: u16)
         
         ep.length = core::cmp::min(wlength as usize, 2);
         ep.position = 0;
-        ep.state = Ep0State::DataIn;
+        ep.state = EndpointState::DataIn;
 
         send_next_packet(ep.tx_buffer_addr, ep.length, &mut ep.position, &ep.data_buffer);
     }
@@ -345,15 +346,16 @@ fn handle_setup(epn: usize)
         // let ADDR_RX_0  = utils::read_register16((usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::ADDR_RX as u32) as *const u16);
         // let COUNT_TX_0 = utils::read_register16(((usb_types::PMA_BASE + (usb_types::BTABLE_ADDRESS::COUNT_TX as u32)) as *const u16)); // & 0x3FF; // Lower 10 bits contain the byte count transmitted
         // let COUNT_RX_0 = utils::read_register16(((usb_types::PMA_BASE + (usb_types::BTABLE_ADDRESS::COUNT_RX as u32)) as *const u16)); // & 0x3FF; // Lower 10 bits contain the byte count received
-        let base = usb_types::PMA_BASE as *const u16;
-        let addr_tx  = core::ptr::read_volatile(base.add(0));   // ADDR_TX  (offset 0x00)
-        let count_tx = core::ptr::read_volatile(base.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
-        let addr_rx  = core::ptr::read_volatile(base.add(4));   // ADDR_RX  (offset 0x04)
-        let count_rx = core::ptr::read_volatile(base.add(6)) & 0x3FF;   // COUNT_RX (offset 0x06)
+        
+        // let base = usb_types::PMA_BASE as *const u16;
+        // let addr_tx  = core::ptr::read_volatile(base.add(0));   // ADDR_TX  (offset 0x00)
+        // let count_tx = core::ptr::read_volatile(base.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
+        // let addr_rx  = core::ptr::read_volatile(base.add(4));   // ADDR_RX  (offset 0x04)
+        // let count_rx = core::ptr::read_volatile(base.add(6)) & 0x3FF;   // COUNT_RX (offset 0x06)
 
         pma_read(ENDPOINTS_HANDLERS[epn].rx_buffer_addr, &mut setup);
         // pma_read(0x80, &mut setup);
-        ENDPOINTS_HANDLERS[epn].state = Ep0State::Setup;
+        ENDPOINTS_HANDLERS[epn].state = EndpointState::Setup;
     }
 
     // bRequest
@@ -387,7 +389,7 @@ fn handle_in(epn: usize)
     {
         match ENDPOINTS_HANDLERS[epn].state
         {
-            Ep0State::DataIn =>
+            EndpointState::DataIn =>
             {
                 if ENDPOINTS_HANDLERS[epn].position < ENDPOINTS_HANDLERS[epn].length
                 {
@@ -397,14 +399,14 @@ fn handle_in(epn: usize)
                 else
                 {
                     // Data stage finished → go to Status OUT stage
-                    ENDPOINTS_HANDLERS[epn].state = Ep0State::StatusOut;
+                    ENDPOINTS_HANDLERS[epn].state = EndpointState::StatusOut;
                     set_stat_rx_valid(epn);
                 }
             }
-            Ep0State::StatusIn =>
+            EndpointState::StatusIn =>
             {
                 // Status stage completed
-                ENDPOINTS_HANDLERS[epn].state = Ep0State::Idle;
+                ENDPOINTS_HANDLERS[epn].state = EndpointState::Idle;
             }
             _ => {}
         }
@@ -418,10 +420,10 @@ fn handle_out(epn: usize)
     {
         match ENDPOINTS_HANDLERS[epn].state
         {
-            Ep0State::StatusOut =>
+            EndpointState::StatusOut =>
             {
                 // Status stage completed
-                ENDPOINTS_HANDLERS[epn].state = Ep0State::Idle;
+                ENDPOINTS_HANDLERS[epn].state = EndpointState::Idle;
             }
             _ => {}
         }
@@ -517,11 +519,11 @@ pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
                 core::ptr::write_volatile(pma.add(0), 0x40);    // ADDR_TX
                 
                 //let base = usb_types::PMA_BASE as *const u16;
-                let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
-                let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
-                let count_rx = core::ptr::read_volatile(pma.add(6));   // COUNT_RX (offset 0x06)
-                let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
-                let count_tx = core::ptr::read_volatile(pma.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
+                // let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
+                // let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
+                // let count_rx = core::ptr::read_volatile(pma.add(6));   // COUNT_RX (offset 0x06)
+                // let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
+                // let count_tx = core::ptr::read_volatile(pma.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
                 }
 
             // === Configure EP0R Register ===
@@ -576,15 +578,15 @@ pub fn handler_endpoint_interrupt()
         if istr & (1 << usb_types::USBISTR::RESET as u16) != 0
         {
             // Handle EP0 interrupt on USB reset
-            configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
+            configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::CONTROL);
             istr &= !(1 << usb_types::USBISTR::RESET as u16);
         }
 
         // SUSP (Suspend)
         if istr & (1 << usb_types::USBISTR::SUSP as u16) != 0
         {
-            let usb_cntr = mcu::USB_CNTR as *mut u16;
             // entra em low power mode
+            // let usb_cntr = mcu::USB_CNTR as *mut u16;
             // utils::set_bit16(usb_cntr, 1); // LP_MODE = 1
             istr &= !(1 << usb_types::USBISTR::SUSP as u16);
         }
