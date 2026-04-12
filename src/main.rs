@@ -3,6 +3,9 @@
 #![no_std]
 #![no_main]
 
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+
 use core::{panic::PanicInfo, sync::atomic::AtomicBool, sync::atomic::Ordering};
 
 mod startup_stm32f103;
@@ -170,10 +173,10 @@ fn main() -> !
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO08, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
 
     // USB
-    // PA11 (D-)
-    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
-    // PA12 (D+)
-    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    // // PA11 (D-)
+    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
+    // // PA12 (D+)
+    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
     // PA15 (USB Pull-up)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO15, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
     usb::init();
