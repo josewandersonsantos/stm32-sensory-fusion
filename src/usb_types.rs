@@ -123,6 +123,7 @@ pub enum STATTX_Status
     DISABLED = 0b00, // Disabled
 }
 
+#[repr(u8)]
 pub enum BTABLE_ADDRESS
 {
     EP0_ADDR_TX = 0x00,   // Endpoint 0 Address of the TX buffer for the endpoint
