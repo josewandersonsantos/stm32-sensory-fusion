@@ -16,9 +16,9 @@ mod rcc;
 mod exti;
 mod gpio;
 mod usart;
-mod usb_types;
-mod usb_endpoint;
-mod usb;
+// mod usb_types;
+// mod usb_endpoint;
+// mod usb;
 mod crc;
 mod watchdog;
 mod irq;
@@ -53,7 +53,7 @@ pub extern "C" fn SysTick_Handler()
 #[no_mangle]
 pub extern "C" fn USB_LP_CAN_RX0_Handler()
 {
-    usb::handle_usb_interrupt();
+    // usb::handle_usb_interrupt();
 }
 
 #[no_mangle]
@@ -169,14 +169,15 @@ fn main() -> !
     
     // PC13 (LED)
     gpio::configure_pin(mcu::GPIOC_BASE, mcu::GPIO13, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
+    /*
     // PA8 (MCO)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO08, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
 
     // USB
-    // // PA11 (D-)
-    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
-    // // PA12 (D+)
-    // gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
+    // PA11 (D-)
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO11, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DM
+    // PA12 (D+)
+    gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO12, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfOpenDrain, Some(gpio::GpioSpeed::Speed50MHz)); // DP
     // PA15 (USB Pull-up)
     gpio::configure_pin(mcu::GPIOB_BASE, mcu::GPIO15, gpio::GpioMode::Output, gpio::GpioConfig::PushPull, Some(gpio::GpioSpeed::Speed2MHz));
     usb::init();
@@ -193,7 +194,7 @@ fn main() -> !
             utils::delay_ms(100);
         }
     }
-
+    */
     // USART2 (DEBUG)
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO02, gpio::GpioMode::AlternateFunction, gpio::GpioConfig::AfPushPull, Some(gpio::GpioSpeed::Speed50MHz));
     gpio::configure_pin(mcu::GPIOA_BASE, mcu::GPIO03, gpio::GpioMode::Input, gpio::GpioConfig::Floating, None);
