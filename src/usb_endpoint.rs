@@ -607,83 +607,11 @@ pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
                 core::ptr::write_volatile(ep0r, val);
 
                 let pma = usb_types::PMA_BASE as *mut u16;
-                // utils::write_register16(pma.add(1), ENDPOINTS_HANDLERS[0].tx_count);       // COUNT_TX
-                // utils::write_register16(pma.add(0), ENDPOINTS_HANDLERS[0].tx_buffer_addr); // ADDR_TX
-                // utils::write_register16(pma.add(2), ENDPOINTS_HANDLERS[0].rx_buffer_addr); // ADDR_RX
-                // utils::write_register16(pma.add(3), ENDPOINTS_HANDLERS[0].rx_count);       // COUNT_RX
                 
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x00) as *mut u16, ENDPOINTS_HANDLERS[0].tx_buffer_addr); // ADDR_TX
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x04) as *mut u16, ENDPOINTS_HANDLERS[0].rx_buffer_addr); // ADDR_RX
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x02) as *mut u16, ENDPOINTS_HANDLERS[0].tx_count);       // COUNT_TX
-                // core::ptr::write_volatile((usb_types::PMA_BASE + 0x06) as *mut u16, ENDPOINTS_HANDLERS[0].rx_count);       // COUNT_RX
-
-                // let pma = 0x40006000 as *mut u16;
-                // // core::ptr::write_volatile(pma.add(1), ENDPOINTS_HANDLERS[0].tx_count);       // COUNT_TX
-                // // core::ptr::write_volatile(pma.add(3), ENDPOINTS_HANDLERS[0].rx_count);       // COUNT_RX
-                // core::ptr::write_volatile(pma.add(0), ENDPOINTS_HANDLERS[0].tx_buffer_addr / 2); // ADDR_TX
-                // core::ptr::write_volatile(pma.add(2), ENDPOINTS_HANDLERS[0].rx_buffer_addr / 2); // ADDR_RX
-
-                let pma = 0x40006000 as *mut u16;
-
-                // EP0
-
                 core::ptr::write_volatile(pma.add(0), ENDPOINTS_HANDLERS[0].tx_buffer_addr / 2);
                 core::ptr::write_volatile(pma.add(2), ENDPOINTS_HANDLERS[0].tx_count);
-
                 core::ptr::write_volatile(pma.add(4), ENDPOINTS_HANDLERS[0].rx_buffer_addr / 2);
                 core::ptr::write_volatile(pma.add(6), ENDPOINTS_HANDLERS[0].rx_count);
-
-                // let pma = 0x40006000 as *mut u16;
-                // // EP0
-                // // TX
-                // core::ptr::write_volatile(pma.add(0), 0x40); // ADDR_TX
-                // core::ptr::write_volatile(pma.add(1), 64);   // COUNT_TX
-                // // RX
-                // core::ptr::write_volatile(pma.add(2), 0x20); // ADDR_RX
-                // core::ptr::write_volatile(pma.add(3), 0x8400); // COUNT_RX
-
-                // let pma = 0x40006000 as *mut u16;
-
-                // // TX (IN)
-                // core::ptr::write_volatile(pma.add(0), ENDPOINTS_HANDLERS[0].tx_buffer_addr);
-                // core::ptr::write_volatile(pma.add(1), ENDPOINTS_HANDLERS[0].tx_count);
-                // // RX (OUT)
-                // core::ptr::write_volatile(pma.add(2), ENDPOINTS_HANDLERS[0].rx_buffer_addr);
-                // core::ptr::write_volatile(pma.add(3), ENDPOINTS_HANDLERS[0].rx_count);
-
-                // let pma = 0x40006000 as *mut u32;  // <<-- Use u32, não u16!
-
-                // // Escreve um par de 16-bit por vez (32-bit access)
-                // utils::write_register32(pma.add(0), ((ENDPOINTS_HANDLERS[0].tx_buffer_addr as u32) << 16) | (ENDPOINTS_HANDLERS[0].tx_count as u32));
-                // utils::write_register32(pma.add(1), ((ENDPOINTS_HANDLERS[0].rx_buffer_addr as u32) << 16) | (ENDPOINTS_HANDLERS[0].rx_count as u32));
-
-                // let pma = 0x40006000 as *mut u32;   // Use u32 aqui também!
-
-                // // Lê os dois campos de uma vez (melhor forma)
-                // let word0 = unsafe { core::ptr::read_volatile(pma) };        // ADDR_TX + COUNT_TX
-                // let word1 = unsafe { core::ptr::read_volatile(pma.add(1)) }; // ADDR_RX + COUNT_RX
-
-                // let addr_tx  = (word0 & 0xFFFF) as u16;
-                // let count_tx = (word0 >> 16) as u16;
-
-                // let addr_rx  = (word1 & 0xFFFF) as u16;
-                // let count_rx = (word1 >> 16) as u16;
-                // let count_rx = (word1 >> 16) as u16;
-
-                // // Mas ainda assim, muitos drivers fazem:
-                // let p = 0x40006000 as *mut u32;
-                // p.write_volatile( (ENDPOINTS_HANDLERS[0].tx_buffer_addr as u32) | ((ENDPOINTS_HANDLERS[0].tx_count as u32) << 16) );
-                // p.add(1).write_volatile( (ENDPOINTS_HANDLERS[0].rx_buffer_addr as u32) | ((ENDPOINTS_HANDLERS[0].rx_count as u32) << 16) );
-
-                // let pma = 0x40006000 as *mut u16;
-                
-                // let addr_rx  = utils::read_register16(pma.add(2));   // ADDR_RX  (offset 0x04)
-                // let addr_tx  = utils::read_register16(pma.add(0));   // COUNT_TX (offset 0x02)
-                // let count_rx = utils::read_register16(pma.add(3));   // ADDR_TX  (offset 0x00)
-                // let count_tx = utils::read_register16(pma.add(1));   // COUNT_RX (offset 0x06)
-                // let count_tx = utils::read_register16(pma.add(1)) & 0x3FF;   // COUNT_TX (offset 0x02)
-
-
 
 
                 // let pma = usb_types::PMA_BASE as *mut u16;
