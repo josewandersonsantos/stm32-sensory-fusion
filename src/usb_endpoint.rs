@@ -68,7 +68,7 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
         ep_type: usb_types::EndpointType::CONTROL,
         descriptor: 
         [
-            18,           // bLength
+            0x12,         // bLength
             1,            // bDescriptorType = DEVICE
             0x00, 0x02,   // bcdUSB = 2.00
             0x00,         // bDeviceClass
@@ -234,9 +234,7 @@ fn pma_read(addr: u16, buffer: &mut [u8])
     unsafe
     {
         let n_bytes = (buffer.len() + 1) >> 1;
-        // let n_bytes = buffer.len();
         let mut pma = usb_types::PMA_BASE as *mut u16;
-        // let mut pma = 0x40006040 as *mut u32;
         pma = pma.add(addr as usize);
         
         for i in 0..n_bytes
@@ -244,67 +242,40 @@ fn pma_read(addr: u16, buffer: &mut [u8])
             let word     = core::ptr::read_volatile(pma);
             buffer[i * 2]     = (word & 0xff) as u8;
             buffer[i * 2 + 1] = (word >> 8) as u8;
-            // buffer[i] = word;
-            pma = pma.add(1);
+            pma = pma.add(2);
         }
     }
 }
 
-/// Writes data from a buffer into the Packet Memory Area (PMA)
-// fn pma_write(addr: u16, data: &[u8])
-// {
-//     let pma = usb_types::PMA_BASE as *mut u16;
-
-//     for i in 0..data.len()
-//     {
-//         let index = (addr as usize / 2) + (i / 2);
-//         //let index = (addr as usize) + (i);
-//         let mut word = unsafe { core::ptr::read_volatile(pma.add(index)) };
-
-//         if i % 2 == 0
-//         {
-//             word = (word & 0xFF00) | (data[i] as u16);
-//         }
-//         else
-//         {
-//             word = (word & 0x00FF) | ((data[i] as u16) << 8);
-//         }
-
-//         unsafe { core::ptr::write_volatile(pma.add(index), word); }
-//     }
-// }
-
-// fn pma_write(addr: u16, data: &[u8])
-// {
-//     unsafe 
-//     {
-//         let n_bytes = (data.len() + 1) >> 1;
-//         let mut pma = usb_types::PMA_BASE as *mut u16;
-//         pma = pma.add(addr as usize);
-        
-//         for i in 0..data.len()
-//         {
-//             let word = (data[i * 2] as u16) | ((data[i * 2 + 1] as u16) << 8);
-//             utils::write_register16(pma, word);
-//             pma = pma.add(1);
-//         }
-//     }
-// }
-
-/// Escreve um slice de bytes na PMA
-fn pma_write(addr: u16, data: &[u8])
+fn pma_write(addr: u16, buffer: &[u8])
 {
-    let pma = usb_types::PMA_BASE as *mut u16;
-    let pma = pma.wrapping_add(addr as usize);
-
-    for (i, chunk) in data.chunks(2).enumerate()
+    unsafe
     {
-        let low = chunk[0] as u16;
-        let high = chunk.get(1).copied().unwrap_or(0) as u16;
-        
-        let word = low | (high << 8);
+        let n_bytes = (buffer.len() + 1) >> 1;
 
-        unsafe { core::ptr::write_volatile(pma.add(i), word);}
+        let mut pma = usb_types::PMA_BASE as *mut u16;
+
+        // mesma lógica que você usou no read
+        pma = pma.add(addr as usize);
+
+        for i in 0..n_bytes
+        {
+            let mut word: u16 = 0;
+
+            // LSB
+            word |= buffer[i * 2] as u16;
+
+            // MSB (se existir)
+            if i * 2 + 1 < buffer.len()
+            {
+                word |= (buffer[i * 2 + 1] as u16) << 8;
+            }
+
+            core::ptr::write_volatile(pma, word);
+
+            // mesmo stride da leitura
+            pma = pma.add(1);
+        }
     }
 }
 
@@ -315,7 +286,7 @@ fn pma_write(addr: u16, data: &[u8])
 //     let mut i = 0;
 //     while i < data.len()
 //     {
-//         let index = (addr as usize / 2) + (i / 2);
+//         let index = (addr as usize) + (i);
 //         //let index = (addr as usize) + (i);
         
 //         let low  = data[i] as u16;
@@ -346,7 +317,6 @@ fn send_next_packet(epn: usize, addr_tx: u16, len: usize, pos: &mut usize, data:
 
     // Update TX count and set TX status to VALID
     write_count_tx(epn, chunk as u16);
-    set_stat_rx_nak(epn);
     set_stat_tx_valid(epn);
 }
 
@@ -355,27 +325,22 @@ fn write_count_tx(epn: usize, count: u16)
 {
     unsafe
     {
-        // let pma = usb_types::PMA_BASE as *mut u16;
-        // GET COUNT_TX BY ENDPOINT
-        // let addr = match epn
-        // {
-        //     0 => pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize) as *mut u16,
-        //     1 => pma.add(usb_types::BTABLE_ADDRESS::EP1_COUNT_TX as usize) as *mut u16,
-        //     2 => pma.add(usb_types::BTABLE_ADDRESS::EP2_COUNT_TX as usize) as *mut u16,
-        //     // 3 => pma.add(usb_types::BTABLE_ADDRESS::EP3_ADDR_TX as usize) as *mut u16,
-        //     // 4 => (usb_types::PMA_BASE + 0x02) as *mut u16,
-        //     // 5 => (usb_types::PMA_BASE + 0x02) as *mut u16,
-        //     // 6 => (usb_types::PMA_BASE + 0x02) as *mut u16,
-        //     // 7 => (usb_types::PMA_BASE + 0x02) as *mut u16,
-        //     _ => return
-        // };
         let pma = usb_types::PMA_BASE as *mut u16;
-        let mut addr = usb_types::PMA_BASE as *mut u16;   // COUNT_TX field
-        addr = addr.wrapping_add(0x01);
-        // let addr = (usb_types::PMA_BASE + usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as u32) as *mut u16;   // COUNT_TX field
-        core::ptr::write_volatile(addr, count);
-        let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
-        let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
+        // GET COUNT_TX BY ENDPOINT
+        let addr = match epn
+        {
+            0 => pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize) as *mut u16,
+            1 => pma.add(usb_types::BTABLE_ADDRESS::EP1_COUNT_TX as usize) as *mut u16,
+            2 => pma.add(usb_types::BTABLE_ADDRESS::EP2_COUNT_TX as usize) as *mut u16,
+            // 3 => pma.add(usb_types::BTABLE_ADDRESS::EP3_ADDR_TX as usize) as *mut u16,
+            // 4 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+            // 5 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+            // 6 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+            // 7 => (usb_types::PMA_BASE + 0x02) as *mut u16,
+            _ => return
+        };
+
+        core::ptr::write_volatile(addr, count & 0x03FF);
     }
 }
 
@@ -412,19 +377,20 @@ fn handle_get_descriptor(epn: usize, wvalue:u16, wlength: u16)
     unsafe
     {
         let desc_type  = wvalue;
-        let data = match desc_type
-        {
-            // Device Descriptor
-            1 => 
-            {
-                &ENDPOINTS_HANDLERS[epn].descriptor
-            }
-            _ =>
-            {
-                stall_ep(epn);
-                return;
-            }
-        };
+        let data = &ENDPOINTS_HANDLERS[epn].descriptor;
+        // let data = match desc_type
+        // {
+        //     // Device Descriptor
+        //     1 => 
+        //     {
+        //         &ENDPOINTS_HANDLERS[epn].descriptor
+        //     }
+        //     _ =>
+        //     {
+        //         stall_ep(epn);
+        //         return;
+        //     }
+        // };
 
         // Limit response size to what the host requested
         ENDPOINTS_HANDLERS[epn].length   = core::cmp::min(wlength as usize, data.len());
@@ -495,8 +461,17 @@ fn handle_setup(epn: usize)
         // GET_DESCRIPTOR
         6 => 
         {
-            // handle_get_descriptor(epn, wvalue, wlength)
-            handle_get_descriptor(epn, 1, 18)
+            if wvalue == 0x0100
+            {
+                // handle_get_descriptor(epn, wvalue, wlength)
+                handle_get_descriptor(epn, 1, wlength)
+            }
+            else
+            {
+                handle_get_descriptor(epn, wvalue, wlength)
+            }
+            // stall_ep(epn)
+            // handle_get_descriptor(epn, 1, 18)
         },
         // Unsupported request → STALL
         _ => stall_ep(epn)
@@ -607,18 +582,18 @@ pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
                 core::ptr::write_volatile(ep0r, val);
 
                 let pma = usb_types::PMA_BASE as *mut u16;
-                
-                core::ptr::write_volatile(pma.add(0), ENDPOINTS_HANDLERS[0].tx_buffer_addr / 2);
-                core::ptr::write_volatile(pma.add(2), ENDPOINTS_HANDLERS[0].tx_count);
-                core::ptr::write_volatile(pma.add(4), ENDPOINTS_HANDLERS[0].rx_buffer_addr / 2);
-                core::ptr::write_volatile(pma.add(6), ENDPOINTS_HANDLERS[0].rx_count);
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_RX as usize), ENDPOINTS_HANDLERS[0].rx_count);  // COUNT_RX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_RX as usize), ENDPOINTS_HANDLERS[0].rx_buffer_addr);    // ADDR_RX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize), ENDPOINTS_HANDLERS[0].tx_count * 4);  // COUNT_TX
+                core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_TX as usize), ENDPOINTS_HANDLERS[0].tx_buffer_addr);    // ADDR_TX
 
+                let data = [0u8; 64];
+                pma_write(ENDPOINTS_HANDLERS[0].rx_buffer_addr as u16, &data);
+                pma_write(ENDPOINTS_HANDLERS[0].tx_buffer_addr as u16, &data);
 
-                // let pma = usb_types::PMA_BASE as *mut u16;
-                // core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_RX as usize), ENDPOINTS_HANDLERS[0].rx_count);  // COUNT_RX
-                // core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_RX as usize), ENDPOINTS_HANDLERS[0].rx_buffer_addr);    // ADDR_RX
-                // core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize), ENDPOINTS_HANDLERS[0].tx_count);  // COUNT_TX
-                // core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_TX as usize), ENDPOINTS_HANDLERS[0].tx_buffer_addr);    // ADDR_TX
+                // let mut setup = [0u8; 8];
+                // pma_read(ENDPOINTS_HANDLERS[0].rx_buffer_addr, &mut setup);
+                // pma_read(ENDPOINTS_HANDLERS[0].rx_buffer_addr, &mut setup);
                 
                 // let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
                 // let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
