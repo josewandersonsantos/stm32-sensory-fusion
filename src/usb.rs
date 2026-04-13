@@ -69,7 +69,7 @@ pub fn init()
     enable_btable();
 
     // Setup Endpoint 0
-    // usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::Control);
+    // usb_endpoint::configure_ep(usb_types::Endpoints::EP0, usb_types::EndpointType::CONTROL);
     
     // Enable Correct Transfer interrupt
     utils::set_bit16(usb_cntr, usb_types::USBCNTR::CTRM as u8); // CTRM
@@ -84,7 +84,7 @@ pub fn init()
     // Connect (Set PA15 high to power USB pull-up)
     gpio::set_pin(mcu::GPIOB_BASE, mcu::GPIO15);
     
-    reconnect();
+    //reconnect();
 
 }
 
