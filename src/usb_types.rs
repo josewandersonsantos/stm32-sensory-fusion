@@ -110,17 +110,17 @@ pub enum USBEPnR
 pub enum STATRX_Status
 {
     VALID    = 0b11,  // Valid
-    NAK      = 0b10,    // NAK
+    NAK      = 0b10,  // NAK
     STALL    = 0b01,  // STALL
-    DISABLED = 0b00, // Disabled
+    DISABLED = 0b00,  // Disabled
 }
 
 pub enum STATTX_Status
 {
     VALID    = 0b11,  // Valid
-    NAK      = 0b10,    // NAK
+    NAK      = 0b10,  // NAK
     STALL    = 0b01,  // STALL
-    DISABLED = 0b00, // Disabled
+    DISABLED = 0b00,  // Disabled
 }
 
 #[repr(u8)]
