@@ -304,6 +304,7 @@ fn send_next_packet(epn: usize, addr_tx: u16, len: usize, pos: &mut usize, data:
     // Update TX count and set TX status to VALID
     write_count_tx(epn, chunk as u16);
     //set_stat_rx_nak(epn);
+    for _ in 0..1000 { core::hint::spin_loop(); }
     set_stat_tx_valid(epn);
 }
 
