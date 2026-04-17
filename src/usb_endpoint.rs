@@ -191,9 +191,10 @@ fn set_stat_rx_valid(epn: usize)
     let epr = get_ep_register(epn);
     unsafe
     {
-        let mut val = core::ptr::read_volatile(epr);
-        val ^= (usb_types::STATRX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
-        core::ptr::write_volatile(epr, val);
+        // let mut val = core::ptr::read_volatile(epr);
+        // val ^= (usb_types::STATRX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        // core::ptr::write_volatile(epr, val);
+        *epr ^= (usb_types::STATRX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
     }
 }
 
@@ -203,9 +204,10 @@ fn set_stat_tx_valid(epn: usize)
     let epr = get_ep_register(epn);
     unsafe
     {
-        let mut val = core::ptr::read_volatile(epr);
-        val ^= (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        core::ptr::write_volatile(epr, val);
+        // let mut val = core::ptr::read_volatile(epr);
+        // val ^= (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        // core::ptr::write_volatile(epr, val);
+        *epr ^= (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_TX as u8);
     }
 }
 
@@ -214,9 +216,10 @@ fn set_stat_rx_nak(epn: usize)
     let epr = get_ep_register(epn);
     unsafe
     {
-        let mut val = core::ptr::read_volatile(epr);
-        val ^= (usb_types::STATRX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_RX as u8);
-        core::ptr::write_volatile(epr, val);
+        // let mut val = core::ptr::read_volatile(epr);
+        // val ^= (usb_types::STATRX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        // core::ptr::write_volatile(epr, val);
+        *epr ^= (usb_types::STATRX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_RX as u8);
     }
 }
 
@@ -225,9 +228,10 @@ fn set_stat_tx_nak(epn: usize)
     let epr = get_ep_register(epn);
     unsafe
     {
-        let mut val = core::ptr::read_volatile(epr);
-        val ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        core::ptr::write_volatile(epr, val);
+        //let mut val = core::ptr::read_volatile(epr);
+        //val ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        //core::ptr::write_volatile(epr, val);
+        *epr ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8);
     }
 }
 
@@ -237,10 +241,12 @@ fn stall_ep(epn: usize)
     let epr = get_ep_register(epn);
     unsafe
     {
-        let mut val = core::ptr::read_volatile(epr);
-        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_TX as u8);
-        val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_RX as u8);
-        core::ptr::write_volatile(epr, val);
+        // let mut val = core::ptr::read_volatile(epr);
+        // val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_TX as u8);
+        // val ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+        // core::ptr::write_volatile(epr, val);
+        *epr ^= (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_TX as u8) |
+                (usb_types::STATRX_Status::STALL as u16) << (usb_types::USBEPnR::STAT_RX as u8);
     }
 }
 
@@ -485,8 +491,10 @@ fn handle_in(epn: usize)
                 {
                     // Data stage finished → go to Status OUT stage
                     ENDPOINTS_HANDLERS[epn].state = EndpointState::StatusOut;
-                    set_stat_rx_valid(epn);
-                    set_stat_tx_nak(epn);
+                    // set_stat_rx_valid(epn);
+                    let epr = get_ep_register(epn);
+                    *epr ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8) | (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+                    // set_stat_tx_nak(epn);
                 }
             }
             EndpointState::StatusIn =>
@@ -575,11 +583,31 @@ pub fn configure_ep(epn: usb_types::Endpoints, ep_type: usb_types::EndpointType)
                 core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_RX as usize), ENDPOINTS_HANDLERS[0].rx_buffer_addr); // ADDR_RX
                 core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_COUNT_TX as usize), ENDPOINTS_HANDLERS[0].tx_count);      // COUNT_TX
                 core::ptr::write_volatile(pma.add(usb_types::BTABLE_ADDRESS::EP0_ADDR_TX as usize), ENDPOINTS_HANDLERS[0].tx_buffer_addr); // ADDR_TX
-                // let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
-                // let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
-                // let count_rx = core::ptr::read_volatile(pma.add(6));   // COUNT_RX (offset 0x06)
-                // let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
-                // let count_tx = core::ptr::read_volatile(pma.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
+
+                let epr = get_ep_register(0);
+                *epr ^= (usb_types::STATTX_Status::NAK as u16) << (usb_types::USBEPnR::STAT_TX as u8) | (usb_types::STATTX_Status::VALID as u16) << (usb_types::USBEPnR::STAT_RX as u8);
+                
+                // let epr = get_ep_register(0);
+                // let epr = get_ep_register(0);
+                // // let addr_tx  = core::ptr::read_volatile(pma.add(0));   // ADDR_TX  (offset 0x00)
+                // // let addr_rx  = core::ptr::read_volatile(pma.add(4));   // ADDR_RX  (offset 0x04)
+                // // let count_rx = core::ptr::read_volatile(pma.add(6));   // COUNT_RX (offset 0x06)
+                // // let count_tx = core::ptr::read_volatile(pma.add(2));   // COUNT_TX (offset 0x02)
+                // // let count_tx = core::ptr::read_volatile(pma.add(2)) & 0x3FF;   // COUNT_TX (offset 0x02)
+
+                // let ep0_desc = PMA_BASE as *mut EndpointConfig;
+                // TX buffer começa no offset 0x0000
+                // (*ep0_desc).addr_tx = ENDPOINTS_HANDLERS[0].tx_buffer_addr;
+                // (*ep0_desc).count_tx = ENDPOINTS_HANDLERS[0].tx_count; // até 64 bytes
+                
+                // // RX buffer começa no offset 0x0040
+                // (*ep0_desc).addr_rx = ENDPOINTS_HANDLERS[0].rx_buffer_addr;
+                // (*ep0_desc).count_rx = ENDPOINTS_HANDLERS[0].rx_count; // até 64 bytes
+                // (*ep0_desc).count_rx = ENDPOINTS_HANDLERS[0].rx_count; // até 64 bytes
+                
+                // *ep0_desc = ((ENDPOINTS_HANDLERS[0].rx_buffer_addr as u32) << 16) | ((ENDPOINTS_HANDLERS[0].rx_count as u32));
+                // ep0_desc = ep0_desc.add(2);
+                // *ep0_desc = ((ENDPOINTS_HANDLERS[0].tx_buffer_addr as u32) << 16) | (ENDPOINTS_HANDLERS[0].tx_count as u32);
             }
 
             set_stat_tx_nak(usb_types::Endpoints::EP0 as usize);
