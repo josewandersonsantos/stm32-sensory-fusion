@@ -331,8 +331,9 @@ fn clear_ctr_rx(ep: *mut u16)
 {
     unsafe
     {
-        let val = core::ptr::read_volatile(ep);
-        core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_RX as u16));
+        // let val = core::ptr::read_volatile(ep);
+        // core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_RX as u16));
+        utils::clear_bit16(ep, usb_types::USBEPnR::CTR_RX as u8);
     }
 }
 
@@ -341,8 +342,9 @@ fn clear_ctr_tx(ep: *mut u16)
 {
     unsafe 
     {
-        let val = core::ptr::read_volatile(ep);
-        core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_TX as u16));
+        // let val = core::ptr::read_volatile(ep);
+        // core::ptr::write_volatile(ep, val & !(1 << usb_types::USBEPnR::CTR_TX as u16));
+        utils::clear_bit16(ep, usb_types::USBEPnR::CTR_TX as u8);
     }
 }
 
