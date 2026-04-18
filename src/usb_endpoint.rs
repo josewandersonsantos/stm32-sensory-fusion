@@ -118,7 +118,8 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
             0x00,         // bDeviceSubClass
             0x00,         // bDeviceProtocol
             0x40,         // bMaxPacketSize0 = 64 bytes
-            0x34, 0x12,   // idVendor  (0x1234)
+            // 0x34, 0x12,   // idVendor  (0x1234)
+            0x83, 0x04,   // idVendor  (0x0483 is STMicroelectronics' VID for testing)
             0x78, 0x56,   // idProduct (0x5678)
             0x00, 0x01,   // bcdDevice
             0x01,         // iManufacturer
@@ -383,9 +384,20 @@ fn write_count_tx(epn: usize, count: u16)
     }
 }
 
-fn handle_set_address(epn: usize, wlength: u16)
+fn handle_set_address(epn: usize, wValue: u16)
 {
-
+    unsafe
+    {
+        // During the Data stage, the device should send a zero-length packet (ZLP) to acknowledge the request
+        ENDPOINTS_HANDLERS[epn].state = EndpointState::StatusIn;        
+        // The new device address will be set after the Status stage is completed
+        let new_address = (wValue & 0x7F) as u8; // Device address is in wValue for SET_ADDRESS
+        // Store the new address temporarily in the endpoint handler struct
+        ENDPOINTS_HANDLERS[epn].address = new_address;
+        
+        write_count_tx(epn, 0); // ZLP
+        set_stat_tx_valid(epn);
+    }
 }
 
 fn get_descriptor(epn: usize, wvalue: u16) -> Option<&'static [u8]>
@@ -490,7 +502,7 @@ fn handle_setup(epn: usize)
         },
         5 => 
         {
-            handle_set_address(epn, wlength)
+            handle_set_address(epn, wvalue)
         },
         // GET_DESCRIPTOR
         6 => 
@@ -529,6 +541,12 @@ fn handle_in(epn: usize)
             }
             EndpointState::StatusIn =>
             {
+                if ENDPOINTS_HANDLERS[epn].address != 0
+                {
+                    // Set the new device address after the Status stage is completed
+                    utils::write_register16(mcu::USB_DADDR as *mut u16, ENDPOINTS_HANDLERS[epn].address as u16 | (1 << usb_types::USBDADDR::EF as u8));
+                    ENDPOINTS_HANDLERS[epn].address = 0;
+                }
                 // Status stage completed
                 ENDPOINTS_HANDLERS[epn].state = EndpointState::Idle;
             }
