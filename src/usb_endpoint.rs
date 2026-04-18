@@ -13,6 +13,33 @@ use crate::utils;
 use crate::mcu;
 use crate::usb_types;
 
+/*
+ * USB Endpoint Register Bit Masks and Helper Functions
+ * These constants and functions are used to manipulate the USB endpoint registers (USB_EPnR)
+ */
+const EP_CTR_RX: u16  = 1 << usb_types::USBEPnR::CTR_RX as u8;
+const EP_DTOG_RX: u16 = 1 << usb_types::USBEPnR::DTOG_RX as u8;
+const EP_STAT_RX: u16 = (usb_types::STATRX_Status::VALID as u16) << usb_types::USBEPnR::STAT_RX as u8;
+const EP_SETUP:   u16 = 1 << usb_types::USBEPnR::SETUP as u8;
+
+const EP_CTR_TX: u16  = 1 << usb_types::USBEPnR::CTR_TX as u8;
+const EP_DTOG_TX: u16 = 1 << usb_types::USBEPnR::DTOG_TX as u8;
+const EP_STAT_TX: u16 = (usb_types::STATTX_Status::VALID as u16) << usb_types::USBEPnR::STAT_TX as u8;
+
+const EP_W0_BITS:    u16 = EP_CTR_RX | EP_CTR_TX;
+const EP_TOGGLE_TX:  u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_RX;
+const EP_TOGGLE_RX:  u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_TX;
+const EP_TOGGLE_ALL: u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_TX | EP_STAT_RX;
+const EP_TOGGLE_STALL: u16 = EP_DTOG_RX | EP_DTOG_TX;
+
+const EP_RX_VALID: u16 = (usb_types::STATTX_Status::VALID as u16) << usb_types::USBEPnR::STAT_RX as u8;
+const EP_TX_VALID: u16 = (usb_types::STATTX_Status::VALID as u16) << usb_types::USBEPnR::STAT_TX as u8;
+const EP_TX_NAK: u16   = (usb_types::STATTX_Status::NAK as u16)   << usb_types::USBEPnR::STAT_TX as u8;
+const EP_TX_STALL: u16 = (usb_types::STATTX_Status::STALL as u16) << usb_types::USBEPnR::STAT_TX as u8;
+
+/* 
+ * ENUMS
+ */
 #[derive(Clone, Copy, PartialEq)]
 enum EndpointState
 {
@@ -24,6 +51,9 @@ enum EndpointState
     StatusOut,  // Status stage (OUT)
 }
 
+/* 
+ * STRUCTS
+ */
 #[derive(Clone, Copy)]
 struct Endpoint
 {
@@ -144,28 +174,6 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
     Endpoint { number: usb_types::Endpoints::EP6, ..DEFAULT_EP },
     Endpoint { number: usb_types::Endpoints::EP7, ..DEFAULT_EP },
 ];
-
-const EP_CTR_RX: u16 = 1 << 15;
-const EP_DTOG_RX: u16 = 1 << 14;
-const EP_STAT_RX: u16 = 0b11 << 12;
-const EP_SETUP:   u16 = 1 << 11;
-
-const EP_CTR_TX: u16 = 1 << 7;
-const EP_DTOG_TX: u16 = 1 << 6;
-const EP_STAT_TX: u16 = 0b11 << 4;
-
-const EP_ADDR: u16 = 0b1111;
-
-const EP_W0_BITS:    u16 = EP_CTR_RX | EP_CTR_TX;
-const EP_TOGGLE_TX:  u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_RX;
-const EP_TOGGLE_RX:  u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_TX;
-const EP_TOGGLE_ALL: u16 = EP_DTOG_RX | EP_DTOG_TX | EP_STAT_TX | EP_STAT_RX;
-const EP_TOGGLE_STALL: u16 = EP_DTOG_RX | EP_DTOG_TX;
-
-const EP_RX_VALID: u16 = 0b11 << 12;
-const EP_TX_VALID: u16 = 0b11 << 4;
-const EP_TX_NAK: u16 = 0b10 << 4;
-const EP_TX_STALL: u16 = 0b01 << 4;
 
 fn enable_usb_peripheral()
 {
