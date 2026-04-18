@@ -62,7 +62,7 @@ struct Endpoint
     ep_type: usb_types::EndpointType,
     
     device_descriptor: [u8; 18],
-    config_descriptor: [u8; 9],
+    config_descriptor: [u8; 25],
     string0: [u8; 4],
     string1: [u8; 10],
     string2: [u8; 16],
@@ -85,7 +85,7 @@ const DEFAULT_EP: Endpoint = Endpoint
     ep_type: usb_types::EndpointType::CONTROL,
     
     device_descriptor: [0; 18],
-    config_descriptor: [0; 9],
+    config_descriptor: [0; 25],
     string0: [0; 4],
     string1: [0; 10],
     string2: [0; 16],
@@ -129,13 +129,31 @@ static mut ENDPOINTS_HANDLERS: [Endpoint; 8] =
         ],
         config_descriptor:
         [
+            // CONFIG
             0x09, 0x02,
-            0x09, 0x00,
-            0x01,
+            0x19, 0x00, // total length = 25
+            0x01,       // 1 interface
             0x01,
             0x00,
             0x80,
             0x32,
+
+            // INTERFACE
+            0x09, 0x04,
+            0x00, // interface 0
+            0x00,
+            0x01, // 1 endpoint
+            0xFF, // vendor specific
+            0x00,
+            0x00,
+            0x00,
+
+            // ENDPOINT IN
+            0x07, 0x05,
+            0x81, // IN EP1
+            0x02, // bulk
+            0x40, 0x00,
+            0x00
         ],
         string0:
         [
@@ -427,6 +445,21 @@ fn get_descriptor(epn: usize, wvalue: u16) -> Option<&'static [u8]>
     }
 }
 
+fn handle_set_configuration(epn: usize)
+{
+    // normalmente só aceita config 1
+    //current_config = 1;
+
+    // habilita endpoints aqui (EP1, etc)
+    /*
+     * <TODO>
+     */
+
+    // responde ZLP
+    write_count_tx(0, 0);
+    set_stat_tx_valid(epn);
+}
+
 /// Handles GET_DESCRIPTOR request
 fn handle_get_descriptor(epn: usize, wvalue:u16, wlength: u16)
 {
@@ -508,6 +541,11 @@ fn handle_setup(epn: usize)
         6 => 
         {
             handle_get_descriptor(epn, wvalue, wlength)
+        },
+        // SET_CONFIGURATION
+        9 => 
+        {
+            handle_set_configuration(epn)
         },
         // Unsupported request → STALL
         _ => 
