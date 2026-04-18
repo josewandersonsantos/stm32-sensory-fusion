@@ -78,9 +78,9 @@ pub fn init()
 
     // Enable USB Low Priority interrupt in NVIC
     irq::enable_irq(irq::IRQn::USB_LP_CAN1_RX0 as u32);
-    irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 6);
+    //irq::set_irq_priority(irq::IRQn::USB_LP_CAN1_RX0 as u32, 6);
 
-    // utils::delay_ms(50);
+    //utils::delay_ms(50);
     // Connect (Set PA15 high to power USB pull-up)
     gpio::set_pin(mcu::GPIOB_BASE, mcu::GPIO15);
     
